@@ -1,0 +1,113 @@
+name: Release - TypeScript SDK (Artifact Registry)
+
+# Publishes ONLY to a Google Cloud Artifact Registry npm repository.
+# Same safeguards as release-python.yml: credential-free `build`, tag-only and approval-gated
+# `publish`, short-lived Workload Identity Federation credentials, configuration from
+# environment variables. See docs/releasing.md.
+on:
+  push:
+    tags: ["typescript-v*"]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish (only honoured when this run is on a typescript-v* tag). Default: build and verify only."
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-typescript
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build and verify (no cloud access)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: sdks/typescript
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: sdks/typescript/package-lock.json
+      - run: npm ci
+      - name: Tag must match the package version
+        if: startsWith(github.ref, 'refs/tags/typescript-v')
+        run: |
+          version=$(node -p "require('./package.json').version")
+          test "typescript-v${version}" = "${GITHUB_REF_NAME}" || { echo "Tag ${GITHUB_REF_NAME} != package version ${version}"; exit 1; }
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run check:package
+      - run: npm audit --omit=dev --audit-level=low
+      - run: npm pack
+      - uses: actions/upload-artifact@v4
+        with:
+          name: typescript-package
+          path: sdks/typescript/*.tgz
+          if-no-files-found: error
+
+  publish:
+    name: Publish to Artifact Registry (requires approval)
+    needs: build
+    if: >-
+      github.repository == 'infimatrix/nova-sdk' &&
+      github.ref_type == 'tag' && startsWith(github.ref_name, 'typescript-v') &&
+      (github.event_name == 'push' || inputs.publish)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: artifact-registry
+    permissions:
+      contents: read
+      id-token: write # exchanged for a short-lived Google credential via Workload Identity Federation
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      AR_LOCATION: ${{ vars.AR_LOCATION }}
+      AR_NPM_REPOSITORY: ${{ vars.AR_NPM_REPOSITORY }}
+    steps:
+      - name: Require registry configuration
+        run: |
+          for v in GCP_PROJECT_ID AR_LOCATION AR_NPM_REPOSITORY; do
+            [ -n "${!v}" ] || { echo "::error::Repository variable $v is not set on the artifact-registry environment."; exit 1; }
+          done
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: sdks/typescript/scripts
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/download-artifact@v4
+        with:
+          name: typescript-package
+          path: pkg/
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+          token_format: access_token
+      - name: Publish to Artifact Registry
+        env:
+          AR_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+        run: |
+          echo "::add-mask::${AR_ACCESS_TOKEN}"
+          registry="https://${AR_LOCATION}-npm.pkg.dev/${GCP_PROJECT_ID}/${AR_NPM_REPOSITORY}/"
+          host="${registry#https:}"
+          export NPM_CONFIG_USERCONFIG="${RUNNER_TEMP}/npmrc"   # outside the workspace; never committed
+          umask 077
+          {
+            echo "@infimatrix:registry=${registry}"
+            echo "${host}:_authToken=${AR_ACCESS_TOKEN}"
+            echo "${host}:always-auth=true"
+          } > "${NPM_CONFIG_USERCONFIG}"
+          # Tarball publishes skip package lifecycle scripts, so run the destination guard explicitly.
+          node sdks/typescript/scripts/require-artifact-registry.mjs
+          npm publish pkg/*.tgz --registry "${registry}"
+          rm -f "${NPM_CONFIG_USERCONFIG}"

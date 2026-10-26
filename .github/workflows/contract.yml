@@ -1,0 +1,36 @@
+name: API contract
+
+# Validates the committed OpenAPI snapshot and that both SDKs and their generated code
+# stay aligned with it. No backend code is installed or imported here; the snapshot is
+# updated from a backend artifact with scripts/sync_openapi.py (docs/openapi-sync.md).
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    name: Snapshot, generators and coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      - name: Contract snapshot tests and SDK alignment
+        run: pytest
+      - name: Generated code is reproducible
+        run: |
+          python scripts/gen_python_models.py --check
+          python scripts/gen_python_async.py --check
+          python scripts/gen_ts_types.py --check
+          python scripts/gen_java_models.py --check
+      - name: Every SDK implements every required operation
+        run: python scripts/check_sdk_coverage.py --strict
