@@ -1,0 +1,82 @@
+"""Analytics and Metrics resource client for Nova SDK."""
+
+from __future__ import annotations
+
+from collections.abc import Mapping
+from datetime import date, datetime
+from typing import TYPE_CHECKING, Any
+
+from nova_sdk._model_base import parse_model
+from nova_sdk.resources.base import BaseResource
+from nova_sdk.schemas import DashboardAnalytics
+
+if TYPE_CHECKING:
+    from nova_sdk.client import NovaClient
+    from nova_sdk.http import HTTPTransport
+
+
+class AnalyticsResource(BaseResource):
+    """Resource client for retrieving Nova delivery and audience analytics."""
+
+    def __init__(
+        self,
+        transport: HTTPTransport,
+        client: NovaClient | None = None,
+    ) -> None:
+        super().__init__(transport)
+        self._client = client
+
+    def dashboard(
+        self,
+        *,
+        date_from: str | datetime | date | None = None,
+        date_to: str | datetime | date | None = None,
+        params: Mapping[str, Any] | None = None,
+        tenant_id: str | None = None,
+    ) -> DashboardAnalytics:
+        """Retrieve aggregated dashboard metrics and deliverability funnel overview.
+
+        Endpoint: GET /api/v1/analytics/dashboard/
+
+        Returns aggregated contact growth counts, complete email delivery funnel
+        breakdowns (total, sent, delivered, opened, clicked, bounced, complaint, failed),
+        and recent failure/contact samples.
+
+        Args:
+            date_from: Start date filter (YYYY-MM-DD string, ISO 8601 string,
+                or Python date/datetime object).
+            date_to: End date filter (YYYY-MM-DD string, ISO 8601 string,
+                or Python date/datetime object).
+            params: Additional raw query parameters.
+            tenant_id: Optional explicit tenant UUID override.
+
+        Returns:
+            Dictionary matching the DashboardAnalyticsSerializer structure:
+            - total_contacts (int)
+            - new_contacts (int)
+            - email_overview (dict): total_email, sent, delivered, opened,
+              clicked, bounced, complaint, failed
+            - recently_added_contacts (list)
+            - recently_failed_messages (list)
+        """
+        query_params: dict[str, Any] = dict(params or {})
+
+        if date_from is not None:
+            if isinstance(date_from, (datetime, date)):
+                query_params["date_from"] = date_from.isoformat()
+            else:
+                query_params["date_from"] = str(date_from).strip()
+
+        if date_to is not None:
+            if isinstance(date_to, (datetime, date)):
+                query_params["date_to"] = date_to.isoformat()
+            else:
+                query_params["date_to"] = str(date_to).strip()
+
+        response = self._transport.request(
+            "GET",
+            "analytics/dashboard/",
+            params=query_params or None,
+            tenant_id=tenant_id,
+        )
+        return parse_model(DashboardAnalytics, response.data or {})

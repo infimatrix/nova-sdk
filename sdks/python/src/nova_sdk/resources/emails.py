@@ -1,0 +1,406 @@
+"""Email Dispatch and Delivery Logs resource client for Nova SDK."""
+
+from __future__ import annotations
+
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any
+from urllib.parse import quote
+
+from nova_sdk._model_base import parse_model
+from nova_sdk.exceptions import NovaValidationError
+from nova_sdk.models import PaginatedResponse
+from nova_sdk.resources.base import BaseResource
+from nova_sdk.schemas import EmailBatchQueued, EmailLog, EmailPreview
+
+if TYPE_CHECKING:
+    from nova_sdk.client import NovaClient
+    from nova_sdk.http import HTTPTransport
+
+
+class EmailsResource(BaseResource):
+    """Resource client for dispatching emails and querying delivery logs."""
+
+    def __init__(
+        self,
+        transport: HTTPTransport,
+        client: NovaClient | None = None,
+    ) -> None:
+        super().__init__(transport)
+        self._client = client
+
+    def send(
+        self,
+        *,
+        recipient_email: str,
+        subject: str,
+        recipient_name: str | None = None,
+        sender_name: str | None = None,
+        sender_email: str | None = None,
+        html_content: str | None = None,
+        text_content: str | None = None,
+        template_id: str | None = None,
+        template_name: str | None = None,
+        note: str | None = None,
+        tenant_id: str | None = None,
+    ) -> EmailLog:
+        """Dispatch a single transactional email message and log its status.
+
+        Endpoint: POST /api/v1/emails/logs/send/
+
+        .. warning::
+            This operation triggers asynchronous email delivery via Celery.
+            Side-effect operations are never automatically retried by the SDK.
+            If a network timeout or connection failure occurs, the dispatch
+            task may have already been queued on the server. Inspect
+            delivery logs via :meth:`list_logs` before attempting a manual retry.
+
+        Args:
+            recipient_email: Destination email address (required).
+            subject: Email subject line (required).
+            recipient_name: Optional destination display name.
+            sender_name: Optional custom sender name.
+            sender_email: Optional custom sender email address.
+            html_content: Optional raw HTML body content.
+            text_content: Optional raw plaintext body content.
+            template_id: Optional Template UUID to render from.
+            template_name: Optional display name for custom template label.
+            note: Optional internal note or description for this dispatch.
+            tenant_id: Optional explicit tenant UUID override.
+
+        Returns:
+            Dictionary representation of the created EmailLog record.
+
+        Raises:
+            NovaValidationError: If required fields are missing or empty.
+            NovaAPIError: If the server rejects the request.
+        """
+        if not recipient_email or not str(recipient_email).strip():
+            raise NovaValidationError("recipient_email must be a non-empty string.")
+        if not subject or not str(subject).strip():
+            raise NovaValidationError("subject must be a non-empty string.")
+
+        payload: dict[str, Any] = {
+            "recipient_email": str(recipient_email).strip(),
+            "subject": str(subject).strip(),
+        }
+
+        if recipient_name is not None:
+            payload["recipient_name"] = str(recipient_name)
+        if sender_name is not None:
+            payload["sender_name"] = str(sender_name)
+        if sender_email is not None:
+            payload["sender_email"] = str(sender_email).strip()
+        if html_content is not None:
+            payload["html_content"] = str(html_content)
+        if text_content is not None:
+            payload["text_content"] = str(text_content)
+        if template_id is not None:
+            payload["template_id"] = str(template_id).strip()
+        if template_name is not None:
+            payload["template_name"] = str(template_name)
+        if note is not None:
+            payload["note"] = str(note)
+
+        response = self._transport.request(
+            "POST",
+            "emails/logs/send/",
+            json=payload,
+            tenant_id=tenant_id,
+            allow_retry=False,
+        )
+        return parse_model(EmailLog, response.data or {})
+
+    def bulk_send(
+        self,
+        *,
+        template_id: str,
+        contact_ids: list[str],
+        sender_email: str,
+        fallback_variables: Mapping[str, Any] | None = None,
+        provider_id: str | None = None,
+        tenant_id: str | None = None,
+    ) -> EmailBatchQueued:
+        """Dispatch batch emails to multiple contacts using a template.
+
+        Endpoint: POST /api/v1/emails/logs/bulk-send/
+
+        .. warning::
+            This operation renders templates for each contact and enqueues
+            batch dispatches. Automatic retries are strictly disabled.
+            Check delivery logs if a transport timeout occurs.
+
+        Args:
+            template_id: UUID of the email template to render (required).
+            contact_ids: Non-empty list of Contact UUIDs, up to 1000 (required).
+            sender_email: Sender email address (required).
+            fallback_variables: Optional mapping of fallback placeholders.
+            provider_id: Optional specific provider configuration UUID.
+            tenant_id: Optional explicit tenant UUID override.
+
+        Returns:
+            Dictionary containing queue status message and contact count.
+
+        Raises:
+            NovaValidationError: If required fields are invalid.
+            NovaAPIError: If the server rejects the request.
+        """
+        if not template_id or not str(template_id).strip():
+            raise NovaValidationError("template_id must be a non-empty string.")
+        if (
+            not contact_ids
+            or not isinstance(contact_ids, (list, tuple))
+            or len(contact_ids) == 0
+        ):
+            raise NovaValidationError(
+                "contact_ids must be a non-empty list of contact UUIDs."
+            )
+        if len(contact_ids) > 1000:
+            raise NovaValidationError(
+                "contact_ids cannot exceed 1000 contacts per bulk send request."
+            )
+        if not sender_email or not str(sender_email).strip():
+            raise NovaValidationError("sender_email must be a non-empty string.")
+        if fallback_variables is not None and not isinstance(
+            fallback_variables, (dict, Mapping)
+        ):
+            raise NovaValidationError(
+                "fallback_variables must be a mapping of variable names to string values."
+            )
+
+        payload: dict[str, Any] = {
+            "template_id": str(template_id).strip(),
+            "contact_ids": [str(cid).strip() for cid in contact_ids],
+            "sender_email": str(sender_email).strip(),
+        }
+
+        if fallback_variables is not None:
+            payload["fallback_variables"] = {
+                str(k): str(v) for k, v in fallback_variables.items()
+            }
+        if provider_id is not None:
+            payload["provider_id"] = str(provider_id).strip()
+
+        response = self._transport.request(
+            "POST",
+            "emails/logs/bulk-send/",
+            json=payload,
+            tenant_id=tenant_id,
+            allow_retry=False,
+        )
+        return parse_model(EmailBatchQueued, response.data or {})
+
+    def group_send(
+        self,
+        *,
+        template_id: str,
+        group_id: str,
+        sender_email: str,
+        fallback_variables: Mapping[str, Any] | None = None,
+        provider_id: str | None = None,
+        tenant_id: str | None = None,
+    ) -> EmailBatchQueued:
+        """Dispatch emails to all active contacts within a contact group.
+
+        Endpoint: POST /api/v1/emails/logs/group-send/
+
+        .. warning::
+            This operation triggers delivery to an entire contact group.
+            Automatic retries are strictly disabled.
+
+        Args:
+            template_id: UUID of the email template to render (required).
+            group_id: UUID of the target ContactGroup (required).
+            sender_email: Sender email address (required).
+            fallback_variables: Optional mapping of fallback placeholders.
+            provider_id: Optional specific provider configuration UUID.
+            tenant_id: Optional explicit tenant UUID override.
+
+        Returns:
+            Dictionary containing queue status message and contact count.
+
+        Raises:
+            NovaValidationError: If required fields are invalid.
+            NovaAPIError: If the server rejects the request.
+        """
+        if not template_id or not str(template_id).strip():
+            raise NovaValidationError("template_id must be a non-empty string.")
+        if not group_id or not str(group_id).strip():
+            raise NovaValidationError("group_id must be a non-empty string.")
+        if not sender_email or not str(sender_email).strip():
+            raise NovaValidationError("sender_email must be a non-empty string.")
+        if fallback_variables is not None and not isinstance(
+            fallback_variables, (dict, Mapping)
+        ):
+            raise NovaValidationError(
+                "fallback_variables must be a mapping of variable names to string values."
+            )
+
+        payload: dict[str, Any] = {
+            "template_id": str(template_id).strip(),
+            "group_id": str(group_id).strip(),
+            "sender_email": str(sender_email).strip(),
+        }
+
+        if fallback_variables is not None:
+            payload["fallback_variables"] = {
+                str(k): str(v) for k, v in fallback_variables.items()
+            }
+        if provider_id is not None:
+            payload["provider_id"] = str(provider_id).strip()
+
+        response = self._transport.request(
+            "POST",
+            "emails/logs/group-send/",
+            json=payload,
+            tenant_id=tenant_id,
+            allow_retry=False,
+        )
+        return parse_model(EmailBatchQueued, response.data or {})
+
+    def list_logs(
+        self,
+        *,
+        status: str | None = None,
+        search: str | None = None,
+        ordering: str | None = None,
+        page: int | None = None,
+        page_size: int | None = None,
+        params: Mapping[str, Any] | None = None,
+        tenant_id: str | None = None,
+    ) -> PaginatedResponse[EmailLog]:
+        """List email delivery logs with pagination, search, and status filtering.
+
+        Endpoint: GET /api/v1/emails/logs/
+
+        Args:
+            status: Filter by delivery status (e.g. 'SENT', 'DELIVERED', 'FAILED').
+            search: Search across message_code, recipient, sender, and subject.
+            ordering: Sort field (e.g. '-created_at', 'status', 'message_code').
+            page: Specific page number.
+            page_size: Number of records per page.
+            params: Additional raw query parameters.
+            tenant_id: Optional explicit tenant UUID override.
+
+        Returns:
+            PaginatedResponse containing email log records.
+        """
+        query_params: dict[str, Any] = dict(params or {})
+        if status is not None:
+            query_params["status"] = str(status).strip()
+        if search is not None:
+            query_params["search"] = str(search).strip()
+        if ordering is not None:
+            query_params["ordering"] = str(ordering).strip()
+        if page is not None:
+            query_params["page"] = page
+        if page_size is not None:
+            query_params["page_size"] = page_size
+
+        response = self._transport.request(
+            "GET",
+            "emails/logs/",
+            params=query_params or None,
+            tenant_id=tenant_id,
+        )
+        return PaginatedResponse.from_response(response, item_parser=EmailLog.from_dict)
+
+    def get_log(
+        self,
+        email_log_id: str,
+        *,
+        tenant_id: str | None = None,
+    ) -> EmailPreview:
+        """Retrieve full details for a specific email delivery log.
+
+        Endpoint: GET /api/v1/emails/logs/{id}/
+
+        Args:
+            email_log_id: UUID of the email message log record.
+            tenant_id: Optional explicit tenant UUID override.
+
+        Returns:
+            Dictionary containing email log details, content, and metadata.
+        """
+        if not email_log_id or not str(email_log_id).strip():
+            raise NovaValidationError("email_log_id must be a non-empty string.")
+        clean_id = quote(str(email_log_id).strip(), safe="")
+
+        response = self._transport.request(
+            "GET",
+            f"emails/logs/{clean_id}/",
+            tenant_id=tenant_id,
+        )
+        return parse_model(EmailPreview, response.data or {})
+
+    def preview(
+        self,
+        email_log_id: str,
+        *,
+        tenant_id: str | None = None,
+    ) -> EmailPreview:
+        """Retrieve rendered HTML, text, and metadata preview for an email log.
+
+        Endpoint: GET /api/v1/emails/logs/{id}/preview/
+
+        Args:
+            email_log_id: UUID of the email message log record.
+            tenant_id: Optional explicit tenant UUID override.
+
+        Returns:
+            Dictionary containing rendered subject, html_content, text_content,
+            and delivery metadata.
+        """
+        if not email_log_id or not str(email_log_id).strip():
+            raise NovaValidationError("email_log_id must be a non-empty string.")
+        clean_id = quote(str(email_log_id).strip(), safe="")
+
+        response = self._transport.request(
+            "GET",
+            f"emails/logs/{clean_id}/preview/",
+            tenant_id=tenant_id,
+        )
+        return parse_model(EmailPreview, response.data or {})
+
+    def export_csv(
+        self,
+        *,
+        status: str | None = None,
+        search: str | None = None,
+        ordering: str | None = None,
+        as_bytes: bool = False,
+        params: Mapping[str, Any] | None = None,
+        tenant_id: str | None = None,
+    ) -> str | bytes:
+        """Export email delivery logs as a CSV file.
+
+        Endpoint: GET /api/v1/emails/logs/export/
+
+        Args:
+            status: Filter exported logs by status (e.g. 'DELIVERED', 'FAILED').
+            search: Search filter across message_code, recipient, sender, subject.
+            ordering: Sort field (e.g. '-created_at', 'status').
+            as_bytes: If True, returns raw bytes; otherwise returns decoded UTF-8 string.
+            params: Additional raw query parameters.
+            tenant_id: Optional explicit tenant UUID override.
+
+        Returns:
+            Raw CSV text (or bytes if `as_bytes=True`).
+        """
+        query_params: dict[str, Any] = dict(params or {})
+        if status is not None:
+            query_params["status"] = str(status).strip()
+        if search is not None:
+            query_params["search"] = str(search).strip()
+        if ordering is not None:
+            query_params["ordering"] = str(ordering).strip()
+
+        raw_response = self._transport.request_raw(
+            "GET",
+            "emails/logs/export/",
+            params=query_params or None,
+            tenant_id=tenant_id,
+        )
+
+        if as_bytes:
+            return raw_response.content
+        return raw_response.text

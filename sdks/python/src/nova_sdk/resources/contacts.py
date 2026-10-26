@@ -1,0 +1,662 @@
+"""Contacts and Contact Groups resource clients for Nova SDK."""
+
+from __future__ import annotations
+
+import builtins
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any, BinaryIO
+from urllib.parse import quote
+
+from nova_sdk._model_base import parse_model
+from nova_sdk.exceptions import NovaValidationError
+from nova_sdk.models import ContactStatus, PaginatedResponse
+from nova_sdk.resources.base import BaseResource
+from nova_sdk.schemas import (
+    BulkContactDeleteResult,
+    BulkContactUploadResult,
+    Contact,
+    ContactActivity,
+    ContactGroup,
+)
+
+if TYPE_CHECKING:
+    from nova_sdk.client import NovaClient
+    from nova_sdk.http import HTTPTransport
+
+
+class ContactGroupsResource(BaseResource):
+    """Resource client for managing audience contact groups / lists."""
+
+    def __init__(
+        self,
+        transport: HTTPTransport,
+        client: NovaClient | None = None,
+    ) -> None:
+        super().__init__(transport)
+        self._client = client
+
+    def list(
+        self,
+        *,
+        search: str | None = None,
+        ordering: str | None = None,
+        page: int | None = None,
+        page_size: int | None = None,
+        params: Mapping[str, Any] | None = None,
+        tenant_id: str | None = None,
+    ) -> PaginatedResponse[ContactGroup]:
+        """List contact groups for the active or specified tenant.
+
+        Endpoint: GET /api/v1/contacts/groups/
+
+        Args:
+            search: Search across name and description.
+            ordering: Sort field (e.g. '-created_at', 'name').
+            page: Specific page number.
+            page_size: Number of records per page.
+            params: Additional raw query parameters.
+            tenant_id: Optional explicit tenant UUID override.
+        """
+        query_params: dict[str, Any] = dict(params or {})
+        if search is not None:
+            query_params["search"] = search
+        if ordering is not None:
+            query_params["ordering"] = ordering
+        if page is not None:
+            query_params["page"] = page
+        if page_size is not None:
+            query_params["page_size"] = page_size
+
+        response = self._transport.request(
+            "GET",
+            "contacts/groups/",
+            params=query_params or None,
+            tenant_id=tenant_id,
+        )
+        return PaginatedResponse.from_response(
+            response, item_parser=ContactGroup.from_dict
+        )
+
+    def get(
+        self,
+        group_id: str,
+        *,
+        tenant_id: str | None = None,
+    ) -> ContactGroup:
+        """Retrieve details of a specific contact group.
+
+        Endpoint: GET /api/v1/contacts/groups/{id}/
+
+        Args:
+            group_id: Contact group UUID.
+            tenant_id: Optional explicit tenant UUID override.
+        """
+        if not group_id or not str(group_id).strip():
+            raise NovaValidationError("group_id must be a non-empty string.")
+        clean_id = quote(str(group_id).strip(), safe="")
+
+        response = self._transport.request(
+            "GET",
+            f"contacts/groups/{clean_id}/",
+            tenant_id=tenant_id,
+        )
+        return parse_model(ContactGroup, response.data or {})
+
+    def create(
+        self,
+        *,
+        name: str,
+        description: str = "",
+        contacts: builtins.list[str] | None = None,
+        tenant_id: str | None = None,
+    ) -> ContactGroup:
+        """Create a new contact group.
+
+        Endpoint: POST /api/v1/contacts/groups/
+
+        Args:
+            name: Group name (required).
+            description: Optional group description.
+            contacts: Optional list of contact UUID strings to assign.
+            tenant_id: Optional explicit tenant UUID override.
+        """
+        if not name or not isinstance(name, str) or not name.strip():
+            raise NovaValidationError("name must be a non-empty string.")
+
+        payload: dict[str, Any] = {
+            "name": name.strip(),
+            "description": description,
+        }
+        if contacts is not None:
+            payload["contacts"] = list(contacts)
+
+        response = self._transport.request(
+            "POST",
+            "contacts/groups/",
+            json=payload,
+            tenant_id=tenant_id,
+        )
+        return parse_model(ContactGroup, response.data or {})
+
+    def update(
+        self,
+        group_id: str,
+        *,
+        name: str | None = None,
+        description: str | None = None,
+        contacts: builtins.list[str] | None = None,
+        tenant_id: str | None = None,
+    ) -> ContactGroup:
+        """Partially update a contact group.
+
+        Endpoint: PATCH /api/v1/contacts/groups/{id}/
+
+        Args:
+            group_id: Contact group UUID.
+            name: Updated group name.
+            description: Updated description.
+            contacts: Updated list of contact UUIDs.
+            tenant_id: Optional explicit tenant UUID override.
+        """
+        if not group_id or not str(group_id).strip():
+            raise NovaValidationError("group_id must be a non-empty string.")
+        clean_id = quote(str(group_id).strip(), safe="")
+
+        payload: dict[str, Any] = {}
+        if name is not None:
+            payload["name"] = name.strip()
+        if description is not None:
+            payload["description"] = description
+        if contacts is not None:
+            payload["contacts"] = list(contacts)
+
+        response = self._transport.request(
+            "PATCH",
+            f"contacts/groups/{clean_id}/",
+            json=payload,
+            tenant_id=tenant_id,
+        )
+        return parse_model(ContactGroup, response.data or {})
+
+    def delete(
+        self,
+        group_id: str,
+        *,
+        tenant_id: str | None = None,
+    ) -> None:
+        """Delete a contact group.
+
+        Endpoint: DELETE /api/v1/contacts/groups/{id}/
+
+        Args:
+            group_id: Contact group UUID.
+            tenant_id: Optional explicit tenant UUID override.
+        """
+        if not group_id or not str(group_id).strip():
+            raise NovaValidationError("group_id must be a non-empty string.")
+        clean_id = quote(str(group_id).strip(), safe="")
+
+        self._transport.request(
+            "DELETE",
+            f"contacts/groups/{clean_id}/",
+            tenant_id=tenant_id,
+        )
+
+
+class ContactsResource(BaseResource):
+    """Resource client for managing tenant contacts / audience subscribers."""
+
+    def __init__(
+        self,
+        transport: HTTPTransport,
+        client: NovaClient | None = None,
+    ) -> None:
+        super().__init__(transport)
+        self._client = client
+        self.groups = ContactGroupsResource(transport, client)
+
+    def list(
+        self,
+        *,
+        timezone: str | None = None,
+        search: str | None = None,
+        ordering: str | None = None,
+        page: int | None = None,
+        page_size: int | None = None,
+        params: Mapping[str, Any] | None = None,
+        tenant_id: str | None = None,
+        **kwargs: Any,
+    ) -> PaginatedResponse[Contact]:
+        """List contacts for the active or specified tenant.
+
+        Endpoint: GET /api/v1/contacts/
+
+        Args:
+            timezone: Filter by timezone string (e.g. 'UTC', 'America/New_York').
+            search: Search across email, first_name, last_name, username, contact_id_str, and phone_number.
+            ordering: Sort field (e.g. '-created_at', 'email', 'status').
+            page: Specific page number.
+            page_size: Number of records per page.
+            params: Additional raw query parameters.
+            tenant_id: Optional explicit tenant UUID override.
+
+        Note:
+            Status filtering on contacts is not supported by the Nova backend API.
+            Passing 'status' will raise a NovaValidationError. Filter contacts by
+            'timezone' or 'search', or filter results client-side.
+        """
+        if "status" in kwargs:
+            raise NovaValidationError(
+                "Status filtering on contacts is not supported by the Nova backend API. "
+                "Filter contacts by 'timezone' or 'search', or filter results client-side."
+            )
+        if params and "status" in params:
+            raise NovaValidationError(
+                "Status filtering on contacts is not supported by the Nova backend API. "
+                "Filter contacts by 'timezone' or 'search', or filter results client-side."
+            )
+        if kwargs:
+            unexpected = ", ".join(sorted(kwargs.keys()))
+            raise NovaValidationError(f"Unexpected query parameters: {unexpected}")
+
+        query_params: dict[str, Any] = dict(params or {})
+        if timezone is not None:
+            query_params["timezone"] = timezone
+        if search is not None:
+            query_params["search"] = search
+        if ordering is not None:
+            query_params["ordering"] = ordering
+        if page is not None:
+            query_params["page"] = page
+        if page_size is not None:
+            query_params["page_size"] = page_size
+
+        response = self._transport.request(
+            "GET",
+            "contacts/",
+            params=query_params or None,
+            tenant_id=tenant_id,
+        )
+        return PaginatedResponse.from_response(response, item_parser=Contact.from_dict)
+
+    def get(
+        self,
+        contact_id: str,
+        *,
+        tenant_id: str | None = None,
+    ) -> Contact:
+        """Retrieve details of a specific contact.
+
+        Endpoint: GET /api/v1/contacts/{id}/
+
+        Args:
+            contact_id: Contact UUID string.
+            tenant_id: Optional explicit tenant UUID override.
+        """
+        if not contact_id or not str(contact_id).strip():
+            raise NovaValidationError("contact_id must be a non-empty string.")
+        clean_id = quote(str(contact_id).strip(), safe="")
+
+        response = self._transport.request(
+            "GET",
+            f"contacts/{clean_id}/",
+            tenant_id=tenant_id,
+        )
+        return parse_model(Contact, response.data or {})
+
+    def create(
+        self,
+        *,
+        email: str,
+        first_name: str = "",
+        last_name: str = "",
+        username: str | None = None,
+        phone_number: str = "",
+        country_code: str = "+91",
+        timezone: str = "UTC",
+        status: str = ContactStatus.SUBSCRIBED,
+        user_id: str | None = None,
+        metadata: Mapping[str, Any] | None = None,
+        tenant_id: str | None = None,
+    ) -> Contact:
+        """Create a new contact record.
+
+        Endpoint: POST /api/v1/contacts/
+
+        Args:
+            email: Contact email address (required).
+            first_name: Contact first name.
+            last_name: Contact last name.
+            username: Optional unique username (auto-generated if omitted).
+            phone_number: Phone number without country code.
+            country_code: Country calling code (default '+91').
+            timezone: Contact timezone (default 'UTC').
+            status: Subscription status ('SUBSCRIBED', 'UNSUBSCRIBED', 'BOUNCED').
+            user_id: Optional external user ID string (maps to contact_id_str).
+            metadata: Custom attributes dictionary.
+            tenant_id: Optional explicit tenant UUID override.
+        """
+        if not email or not isinstance(email, str) or not email.strip():
+            raise NovaValidationError("email must be a non-empty string.")
+
+        payload: dict[str, Any] = {
+            "email": email.strip().lower(),
+            "first_name": first_name,
+            "last_name": last_name,
+            "phone_number": phone_number,
+            "country_code": country_code,
+            "timezone": timezone,
+            "status": status,
+        }
+        if username is not None:
+            payload["username"] = username.strip()
+        if user_id is not None:
+            payload["user_id"] = user_id.strip()
+        if metadata is not None:
+            payload["metadata"] = dict(metadata)
+
+        response = self._transport.request(
+            "POST",
+            "contacts/",
+            json=payload,
+            tenant_id=tenant_id,
+        )
+        return parse_model(Contact, response.data or {})
+
+    def update(
+        self,
+        contact_id: str,
+        *,
+        email: str | None = None,
+        first_name: str | None = None,
+        last_name: str | None = None,
+        username: str | None = None,
+        phone_number: str | None = None,
+        country_code: str | None = None,
+        timezone: str | None = None,
+        status: str | None = None,
+        user_id: str | None = None,
+        metadata: Mapping[str, Any] | None = None,
+        tenant_id: str | None = None,
+    ) -> Contact:
+        """Partially update an existing contact.
+
+        Endpoint: PATCH /api/v1/contacts/{id}/
+
+        Args:
+            contact_id: Contact UUID string.
+            email: Updated email address.
+            first_name: Updated first name.
+            last_name: Updated last name.
+            username: Updated username.
+            phone_number: Updated phone number.
+            country_code: Updated country code.
+            timezone: Updated timezone.
+            status: Updated subscription status.
+            user_id: Updated external user ID.
+            metadata: Updated custom metadata dictionary.
+            tenant_id: Optional explicit tenant UUID override.
+        """
+        if not contact_id or not str(contact_id).strip():
+            raise NovaValidationError("contact_id must be a non-empty string.")
+        clean_id = quote(str(contact_id).strip(), safe="")
+
+        payload: dict[str, Any] = {}
+        if email is not None:
+            payload["email"] = email.strip().lower()
+        if first_name is not None:
+            payload["first_name"] = first_name
+        if last_name is not None:
+            payload["last_name"] = last_name
+        if username is not None:
+            payload["username"] = username.strip()
+        if phone_number is not None:
+            payload["phone_number"] = phone_number
+        if country_code is not None:
+            payload["country_code"] = country_code
+        if timezone is not None:
+            payload["timezone"] = timezone
+        if status is not None:
+            payload["status"] = status
+        if user_id is not None:
+            payload["user_id"] = user_id.strip()
+        if metadata is not None:
+            payload["metadata"] = dict(metadata)
+
+        response = self._transport.request(
+            "PATCH",
+            f"contacts/{clean_id}/",
+            json=payload,
+            tenant_id=tenant_id,
+        )
+        return parse_model(Contact, response.data or {})
+
+    def delete(
+        self,
+        contact_id: str,
+        *,
+        tenant_id: str | None = None,
+    ) -> None:
+        """Delete a contact record.
+
+        Endpoint: DELETE /api/v1/contacts/{id}/
+
+        Args:
+            contact_id: Contact UUID string.
+            tenant_id: Optional explicit tenant UUID override.
+        """
+        if not contact_id or not str(contact_id).strip():
+            raise NovaValidationError("contact_id must be a non-empty string.")
+        clean_id = quote(str(contact_id).strip(), safe="")
+
+        self._transport.request(
+            "DELETE",
+            f"contacts/{clean_id}/",
+            tenant_id=tenant_id,
+        )
+
+    def bulk_delete(
+        self,
+        contact_ids: builtins.list[str],
+        *,
+        tenant_id: str | None = None,
+    ) -> BulkContactDeleteResult:
+        """Bulk delete multiple contacts by their UUIDs.
+
+        Endpoint: POST /api/v1/contacts/bulk-delete/
+
+        Args:
+            contact_ids: List of contact UUID strings to delete.
+            tenant_id: Optional explicit tenant UUID override.
+
+        Returns:
+            Dictionary with 'success' and 'deleted_count'.
+        """
+        if not isinstance(contact_ids, list) or not contact_ids:
+            raise NovaValidationError("contact_ids must be a non-empty list of IDs.")
+
+        payload = {"contact_ids": [str(cid).strip() for cid in contact_ids]}
+        response = self._transport.request(
+            "POST",
+            "contacts/bulk-delete/",
+            json=payload,
+            tenant_id=tenant_id,
+        )
+        return parse_model(BulkContactDeleteResult, response.data or {})
+
+    def activity(
+        self,
+        contact_id: str,
+        *,
+        tenant_id: str | None = None,
+    ) -> builtins.list[ContactActivity]:
+        """Retrieve activity timeline (email dispatches and delivery events) for a contact.
+
+        Endpoint: GET /api/v1/contacts/{id}/activity/
+
+        Args:
+            contact_id: Contact UUID string.
+            tenant_id: Optional explicit tenant UUID override.
+
+        Returns:
+            List of activity records with 'id', 'title', 'subject', 'status', 'timestamp'.
+        """
+        if not contact_id or not str(contact_id).strip():
+            raise NovaValidationError("contact_id must be a non-empty string.")
+        clean_id = quote(str(contact_id).strip(), safe="")
+
+        response = self._transport.request(
+            "GET",
+            f"contacts/{clean_id}/activity/",
+            tenant_id=tenant_id,
+        )
+        data = response.data
+        if isinstance(data, list):
+            return [ContactActivity.from_dict(item) for item in data]
+        return []
+
+    def sample_template(
+        self,
+        *,
+        tenant_id: str | None = None,
+    ) -> str:
+        """Download CSV sample format template for bulk uploading contacts.
+
+        Endpoint: GET /api/v1/contacts/sample-template/
+
+        Returns:
+            CSV file content as string.
+        """
+        response = self._transport.request(
+            "GET",
+            "contacts/sample-template/",
+            tenant_id=tenant_id,
+        )
+        return str(response.data or "")
+
+    def bulk_upload(
+        self,
+        file: bytes | str | BinaryIO,
+        *,
+        filename: str = "contacts.csv",
+        tenant_id: str | None = None,
+    ) -> BulkContactUploadResult:
+        """Bulk import contacts from a CSV file.
+
+        Endpoint: POST /api/v1/contacts/bulk-upload/
+
+        Args:
+            file: CSV file bytes, string, or file-like stream. Note that caller-owned
+                streams are read from their current file pointer position without being
+                repositioned. Callers must ensure stream objects are rewound (e.g. file.seek(0))
+                prior to calling this method.
+            filename: Filename to provide in multipart form-data (default 'contacts.csv').
+            tenant_id: Optional explicit tenant UUID override.
+
+        Returns:
+            Summary dictionary with 'message', 'created_count', 'errors', 'contacts'.
+
+        Raises:
+            NovaValidationError: If file is not bytes, str, or readable stream, or if
+                the content is empty (e.g. stream positioned at EOF).
+        """
+        if isinstance(file, str):
+            file_bytes = file.encode("utf-8")
+        elif isinstance(file, bytes):
+            file_bytes = file
+        elif hasattr(file, "read"):
+            content = file.read()
+            file_bytes = (
+                content.encode("utf-8") if isinstance(content, str) else content
+            )
+        else:
+            raise NovaValidationError(
+                "file must be bytes, string, or a readable binary buffer."
+            )
+
+        if not file_bytes:
+            raise NovaValidationError(
+                "file content is empty. If passing an open file stream, ensure it is rewound to the beginning (file.seek(0))."
+            )
+
+        files = {"file": (filename, file_bytes, "text/csv")}
+        response = self._transport.request(
+            "POST",
+            "contacts/bulk-upload/",
+            files=files,
+            tenant_id=tenant_id,
+        )
+        return parse_model(BulkContactUploadResult, response.data or {})
+
+    # Shortcut conveniences forwarding to groups sub-resource
+    def list_groups(
+        self,
+        *,
+        search: str | None = None,
+        ordering: str | None = None,
+        page: int | None = None,
+        page_size: int | None = None,
+        params: Mapping[str, Any] | None = None,
+        tenant_id: str | None = None,
+    ) -> PaginatedResponse[ContactGroup]:
+        """Shortcut for client.contacts.groups.list()."""
+        return self.groups.list(
+            search=search,
+            ordering=ordering,
+            page=page,
+            page_size=page_size,
+            params=params,
+            tenant_id=tenant_id,
+        )
+
+    def get_group(
+        self,
+        group_id: str,
+        *,
+        tenant_id: str | None = None,
+    ) -> ContactGroup:
+        """Shortcut for client.contacts.groups.get()."""
+        return self.groups.get(group_id, tenant_id=tenant_id)
+
+    def create_group(
+        self,
+        *,
+        name: str,
+        description: str = "",
+        contacts: builtins.list[str] | None = None,
+        tenant_id: str | None = None,
+    ) -> ContactGroup:
+        """Shortcut for client.contacts.groups.create()."""
+        return self.groups.create(
+            name=name,
+            description=description,
+            contacts=contacts,
+            tenant_id=tenant_id,
+        )
+
+    def update_group(
+        self,
+        group_id: str,
+        *,
+        name: str | None = None,
+        description: str | None = None,
+        contacts: builtins.list[str] | None = None,
+        tenant_id: str | None = None,
+    ) -> ContactGroup:
+        """Shortcut for client.contacts.groups.update()."""
+        return self.groups.update(
+            group_id,
+            name=name,
+            description=description,
+            contacts=contacts,
+            tenant_id=tenant_id,
+        )
+
+    def delete_group(
+        self,
+        group_id: str,
+        *,
+        tenant_id: str | None = None,
+    ) -> None:
+        """Shortcut for client.contacts.groups.delete()."""
+        self.groups.delete(group_id, tenant_id=tenant_id)

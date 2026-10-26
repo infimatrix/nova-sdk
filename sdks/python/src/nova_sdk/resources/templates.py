@@ -1,0 +1,302 @@
+"""Email Templates resource client for Nova SDK."""
+
+from __future__ import annotations
+
+import builtins
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any
+from urllib.parse import quote
+
+from nova_sdk._model_base import parse_model
+from nova_sdk.exceptions import NovaValidationError
+from nova_sdk.models import PaginatedResponse, TemplateStatus
+from nova_sdk.resources.base import BaseResource
+from nova_sdk.schemas import Template, TemplateRender
+
+if TYPE_CHECKING:
+    from nova_sdk.client import NovaClient
+    from nova_sdk.http import HTTPTransport
+
+
+class TemplatesResource(BaseResource):
+    """Resource client for managing tenant-scoped email templates."""
+
+    def __init__(
+        self,
+        transport: HTTPTransport,
+        client: NovaClient | None = None,
+    ) -> None:
+        super().__init__(transport)
+        self._client = client
+
+    def list(
+        self,
+        *,
+        status: str | None = None,
+        search: str | None = None,
+        ordering: str | None = None,
+        page: int | None = None,
+        page_size: int | None = None,
+        params: Mapping[str, Any] | None = None,
+        tenant_id: str | None = None,
+    ) -> PaginatedResponse[Template]:
+        """List email templates for the active or specified tenant.
+
+        Endpoint: GET /api/v1/templates/
+
+        Args:
+            status: Filter by template status ('ACTIVE', 'DRAFT', 'ARCHIVED').
+            search: Search across name, subject, and description.
+            ordering: Sort field (e.g., '-created_at', 'name', 'status').
+            page: Specific page number.
+            page_size: Number of records per page.
+            params: Additional raw query parameters.
+            tenant_id: Optional explicit tenant UUID override.
+        """
+        query_params: dict[str, Any] = dict(params or {})
+        if status is not None:
+            query_params["status"] = status
+        if search is not None:
+            query_params["search"] = search
+        if ordering is not None:
+            query_params["ordering"] = ordering
+        if page is not None:
+            query_params["page"] = page
+        if page_size is not None:
+            query_params["page_size"] = page_size
+
+        response = self._transport.request(
+            "GET",
+            "templates/",
+            params=query_params or None,
+            tenant_id=tenant_id,
+        )
+        return PaginatedResponse.from_response(response, item_parser=Template.from_dict)
+
+    def get(
+        self,
+        template_id: str,
+        *,
+        tenant_id: str | None = None,
+    ) -> Template:
+        """Retrieve details of a specific email template.
+
+        Endpoint: GET /api/v1/templates/{id}/
+
+        Args:
+            template_id: Template UUID or unique slug.
+            tenant_id: Optional explicit tenant UUID override.
+        """
+        if not template_id or not str(template_id).strip():
+            raise NovaValidationError("template_id must be a non-empty string.")
+        clean_id = quote(str(template_id).strip(), safe="")
+
+        response = self._transport.request(
+            "GET",
+            f"templates/{clean_id}/",
+            tenant_id=tenant_id,
+        )
+        return parse_model(Template, response.data or {})
+
+    def create(
+        self,
+        *,
+        name: str,
+        subject: str = "",
+        html_content: str = "",
+        text_content: str = "",
+        description: str = "",
+        status: str = TemplateStatus.ACTIVE,
+        action_types: builtins.list[str] | None = None,
+        design_config: Mapping[str, Any] | None = None,
+        placeholders: builtins.list[Mapping[str, Any]] | None = None,
+        tenant_id: str | None = None,
+    ) -> Template:
+        """Create a new email template in the tenant workspace.
+
+        Endpoint: POST /api/v1/templates/
+
+        Args:
+            name: Human-readable template name (required).
+            subject: Email subject line.
+            html_content: Raw HTML body content.
+            text_content: Plaintext fallback body content.
+            description: Template purpose or notes.
+            status: Initial status ('ACTIVE', 'DRAFT', 'ARCHIVED').
+            action_types: Optional action category list (e.g. ['Onboarding']).
+            design_config: Optional color and layout dictionary.
+            placeholders: Optional list of variable placeholder definitions:
+                [{'name': 'varName', 'default_value': 'val', 'is_required': False}].
+            tenant_id: Optional explicit tenant UUID override.
+        """
+        if not name or not isinstance(name, str) or not name.strip():
+            raise NovaValidationError("name must be a non-empty string.")
+
+        payload: dict[str, Any] = {
+            "name": name.strip(),
+            "subject": subject,
+            "html_content": html_content,
+            "text_content": text_content,
+            "description": description,
+            "status": status,
+        }
+        if action_types is not None:
+            payload["action_types"] = list(action_types)
+        if design_config is not None:
+            payload["design_config"] = dict(design_config)
+        if placeholders is not None:
+            payload["placeholders"] = [dict(p) for p in placeholders]
+
+        response = self._transport.request(
+            "POST",
+            "templates/",
+            json=payload,
+            tenant_id=tenant_id,
+        )
+        return parse_model(Template, response.data or {})
+
+    def update(
+        self,
+        template_id: str,
+        *,
+        name: str | None = None,
+        subject: str | None = None,
+        html_content: str | None = None,
+        text_content: str | None = None,
+        description: str | None = None,
+        status: str | None = None,
+        action_types: builtins.list[str] | None = None,
+        design_config: Mapping[str, Any] | None = None,
+        placeholders: builtins.list[Mapping[str, Any]] | None = None,
+        tenant_id: str | None = None,
+    ) -> Template:
+        """Partially update an existing email template.
+
+        Endpoint: PATCH /api/v1/templates/{id}/
+
+        Args:
+            template_id: Template UUID or unique slug.
+            name: Updated template name.
+            subject: Updated subject line.
+            html_content: Updated HTML content.
+            text_content: Updated plaintext content.
+            description: Updated description.
+            status: Updated status ('ACTIVE', 'DRAFT', 'ARCHIVED').
+            action_types: Updated action categories.
+            design_config: Updated design configuration dictionary.
+            placeholders: Updated placeholder definitions.
+            tenant_id: Optional explicit tenant UUID override.
+        """
+        if not template_id or not str(template_id).strip():
+            raise NovaValidationError("template_id must be a non-empty string.")
+        clean_id = quote(str(template_id).strip(), safe="")
+
+        payload: dict[str, Any] = {}
+        if name is not None:
+            payload["name"] = name.strip()
+        if subject is not None:
+            payload["subject"] = subject
+        if html_content is not None:
+            payload["html_content"] = html_content
+        if text_content is not None:
+            payload["text_content"] = text_content
+        if description is not None:
+            payload["description"] = description
+        if status is not None:
+            payload["status"] = status
+        if action_types is not None:
+            payload["action_types"] = list(action_types)
+        if design_config is not None:
+            payload["design_config"] = dict(design_config)
+        if placeholders is not None:
+            payload["placeholders"] = [dict(p) for p in placeholders]
+
+        response = self._transport.request(
+            "PATCH",
+            f"templates/{clean_id}/",
+            json=payload,
+            tenant_id=tenant_id,
+        )
+        return parse_model(Template, response.data or {})
+
+    def delete(
+        self,
+        template_id: str,
+        *,
+        tenant_id: str | None = None,
+    ) -> None:
+        """Delete an email template from the tenant workspace.
+
+        Endpoint: DELETE /api/v1/templates/{id}/
+
+        Args:
+            template_id: Template UUID or unique slug.
+            tenant_id: Optional explicit tenant UUID override.
+        """
+        if not template_id or not str(template_id).strip():
+            raise NovaValidationError("template_id must be a non-empty string.")
+        clean_id = quote(str(template_id).strip(), safe="")
+
+        self._transport.request(
+            "DELETE",
+            f"templates/{clean_id}/",
+            tenant_id=tenant_id,
+        )
+
+    def render(
+        self,
+        template_id: str,
+        *,
+        variables: Mapping[str, Any] | None = None,
+        tenant_id: str | None = None,
+    ) -> TemplateRender:
+        """Render a template's subject and HTML content with variable substitution.
+
+        Endpoint: POST /api/v1/templates/{id}/render/
+
+        Args:
+            template_id: Template UUID or unique slug.
+            variables: Key-value dictionary of variables (e.g. {'userName': 'Alice'}).
+            tenant_id: Optional explicit tenant UUID override.
+
+        Returns:
+            Dictionary containing rendered 'subject' and 'html_content'.
+        """
+        if not template_id or not str(template_id).strip():
+            raise NovaValidationError("template_id must be a non-empty string.")
+        clean_id = quote(str(template_id).strip(), safe="")
+
+        payload = {"variables": dict(variables or {})}
+        response = self._transport.request(
+            "POST",
+            f"templates/{clean_id}/render/",
+            json=payload,
+            tenant_id=tenant_id,
+        )
+        return parse_model(TemplateRender, response.data or {})
+
+    def activate(
+        self,
+        template_id: str,
+        *,
+        tenant_id: str | None = None,
+    ) -> Template:
+        """Convenience shortcut to set template status to ACTIVE."""
+        return self.update(
+            template_id,
+            status=TemplateStatus.ACTIVE,
+            tenant_id=tenant_id,
+        )
+
+    def archive(
+        self,
+        template_id: str,
+        *,
+        tenant_id: str | None = None,
+    ) -> Template:
+        """Convenience shortcut to set template status to ARCHIVED."""
+        return self.update(
+            template_id,
+            status=TemplateStatus.ARCHIVED,
+            tenant_id=tenant_id,
+        )
