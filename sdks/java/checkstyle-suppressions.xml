@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN"
+  "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+<suppressions>
+  <!-- ContractTest is a one-line-per-operation table of calls; wrapping it would hurt readability. -->
+  <suppress checks="LineLength" files="ContractTest\.java"/>
+</suppressions>

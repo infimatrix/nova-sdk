@@ -1,0 +1,36 @@
+// AUTO-GENERATED from openapi/nova-api.yaml by scripts/gen_java_models.py.
+// Do not edit by hand; run the script to regenerate.
+
+package com.infimatrix.nova.models;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+/**
+ * TransactionalNotification model.
+ *
+ * @param id JSON property id.
+ * @param displayId Human-readable ID (e.g. ID001)
+ * @param name JSON property name.
+ * @param apiIdentifier Unique API identifier key (e.g. welcome_email)
+ * @param templateId JSON property template_id. Optional.
+ * @param templateName JSON property template_name.
+ * @param description Description of when this notification is triggered Optional.
+ * @param createdAt JSON property created_at.
+ * @param updatedAt JSON property updated_at.
+ */
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public record TransactionalNotification(
+    @JsonProperty("id") String id,
+    @JsonProperty("display_id") String displayId,
+    @JsonProperty("name") String name,
+    @JsonProperty("api_identifier") String apiIdentifier,
+    @JsonProperty("template_id") String templateId,
+    @JsonProperty("template_name") String templateName,
+    @JsonProperty("description") String description,
+    @JsonProperty("created_at") String createdAt,
+    @JsonProperty("updated_at") String updatedAt
+) {
+}
