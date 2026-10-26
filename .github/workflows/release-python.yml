@@ -79,7 +79,7 @@ jobs:
           for v in GCP_PROJECT_ID AR_LOCATION AR_PYTHON_REPOSITORY; do
             [ -n "${!v}" ] || { echo "::error::Repository variable $v is not set on the artifact-registry environment."; exit 1; }
           done
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: python-dist
           path: dist/
