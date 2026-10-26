@@ -1,0 +1,15 @@
+# Contract operations that SDKs intentionally do not expose.
+# Everything else in openapi/nova-api.yaml must be implemented by every SDK
+# (checked by scripts/check_sdk_coverage.py --strict).
+#
+# PUT operations whose PATCH counterpart is implemented are treated as covered:
+# SDKs expose a single partial-update method (`update`) backed by PATCH.
+excluded:
+  - operation: "POST emails/logs/"
+    reason: "Email logs are system-generated delivery records; clients send mail via POST emails/logs/send/."
+  - operation: "PATCH emails/logs/{}/"
+    reason: "Email logs are system-generated delivery records (backend exposes ModelViewSet writes; not part of the supported SDK surface)."
+  - operation: "PUT emails/logs/{}/"
+    reason: "See PATCH emails/logs/{}/."
+  - operation: "DELETE emails/logs/{}/"
+    reason: "See PATCH emails/logs/{}/."
