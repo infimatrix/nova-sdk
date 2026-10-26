@@ -1,0 +1,68 @@
+{
+  "name": "@infimatrix/nova-sdk",
+  "version": "0.1.0",
+  "description": "Official TypeScript/JavaScript SDK for Nova \u2014 Dynamic Email Template & Email Delivery Platform",
+  "license": "MIT",
+  "author": "Nova Engineering Team",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=18.17"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/infimatrix/nova-sdk.git",
+    "directory": "sdks/typescript"
+  },
+  "homepage": "https://github.com/infimatrix/nova-sdk/tree/main/sdks/typescript#readme",
+  "bugs": {
+    "url": "https://github.com/infimatrix/nova-sdk/issues"
+  },
+  "keywords": [
+    "nova",
+    "email",
+    "templates",
+    "api",
+    "sdk"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "check:package": "node scripts/check-package.mjs",
+    "prepublishOnly": "node scripts/require-artifact-registry.mjs && npm run typecheck && npm test && npm run build && npm run check:package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "@vitest/coverage-v8": "^4.1.12",
+    "tsup": "^8.5.1",
+    "typescript": "5.9",
+    "vitest": "^4.1.12"
+  },
+  "overrides": {
+    "esbuild": "^0.28.1"
+  }
+}
