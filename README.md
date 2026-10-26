@@ -32,8 +32,19 @@ cd sdks/typescript && npm ci && npm run typecheck && npm test && npm run build
 cd sdks/java && mvn verify        # JDK 17+, Maven 3.9+
 ```
 
-Packages are distributed only through Google Cloud Artifact Registry; see [docs/distribution.md](docs/distribution.md) and
-[docs/releasing.md](docs/releasing.md). No release has been made and no registry resources are configured by this repository.
+Packages are distributed only through Google Cloud Artifact Registry. No release has been made and no registry resources
+are configured by this repository.
+
+| I want to… | Read |
+|---|---|
+| Publish the SDKs to Artifact Registry | [docs/deploy-artifact-registry.md](docs/deploy-artifact-registry.md) |
+| Install and use the Python SDK | [docs/using-python.md](docs/using-python.md) |
+| Install and use the Node.js SDK | [docs/using-node.md](docs/using-node.md) |
+| Install and use the Java SDK | [docs/using-java.md](docs/using-java.md) |
+| Understand the safeguards and release process | [docs/distribution.md](docs/distribution.md), [docs/releasing.md](docs/releasing.md) |
+
+Release workflows exist for Python (`python-v*` tags) and TypeScript (`typescript-v*` tags). Java is published manually
+until a workflow is added.
 
 ## License
 

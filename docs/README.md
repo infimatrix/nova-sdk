@@ -25,6 +25,8 @@ scripts/sync_openapi.py ──▶ openapi/nova-api.yaml  (committed snapshot, th
 - [Error handling](error-handling.md)
 - [Conventions every SDK follows](conventions.md)
 - [Versioning and compatibility matrix](versioning.md)
+- Using the SDKs: [Python](using-python.md), [Node.js](using-node.md), [Java](using-java.md)
+- [Deploying to Artifact Registry (step by step)](deploy-artifact-registry.md)
 - [Distribution via Google Cloud Artifact Registry](distribution.md)
 - [Releasing](releasing.md)
 - [Updating the OpenAPI contract](openapi-sync.md)
