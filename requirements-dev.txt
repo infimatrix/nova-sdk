@@ -1,0 +1,4 @@
+pyyaml>=6.0
+openapi-spec-validator>=0.7.1
+pytest>=8.0.0
+ruff>=0.17,<0.18
