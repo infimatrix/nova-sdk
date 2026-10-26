@@ -1,0 +1,103 @@
+name: Release - Python SDK (Artifact Registry)
+
+# Publishes ONLY to a Google Cloud Artifact Registry Python repository.
+#
+# Safeguards
+#   * `build` needs no cloud credentials and always runs: lint, tests, build, twine check.
+#   * `publish` runs only for a `python-v*` tag, and only after a reviewer approves the
+#     `artifact-registry` GitHub environment (Settings -> Environments -> Required reviewers).
+#   * Authentication is short-lived (Workload Identity Federation -> 60 minute access token);
+#     no service-account key or password is stored anywhere.
+#   * Project, location, repository and identity come from environment *variables*, never from
+#     source code. See docs/releasing.md for setup.
+on:
+  push:
+    tags: ["python-v*"]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish (only honoured when this run is on a python-v* tag). Default: build and verify only."
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-python
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build and verify (no cloud access)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: sdks/python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - name: Tag must match the package version
+        if: startsWith(github.ref, 'refs/tags/python-v')
+        run: |
+          version=$(python -c "from nova_sdk import __version__; print(__version__)")
+          test "python-v${version}" = "${GITHUB_REF_NAME}" || { echo "Tag ${GITHUB_REF_NAME} != package version ${version}"; exit 1; }
+      - run: ruff check . && ruff format --check . && mypy
+      - run: pytest -p no:cacheprovider
+      - run: python -m build
+      - run: twine check dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-dist
+          path: sdks/python/dist/
+          if-no-files-found: error
+
+  publish:
+    name: Publish to Artifact Registry (requires approval)
+    needs: build
+    if: >-
+      github.repository == 'infimatrix/nova-sdk' &&
+      github.ref_type == 'tag' && startsWith(github.ref_name, 'python-v') &&
+      (github.event_name == 'push' || inputs.publish)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: artifact-registry
+    permissions:
+      contents: read
+      id-token: write # exchanged for a short-lived Google credential via Workload Identity Federation
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      AR_LOCATION: ${{ vars.AR_LOCATION }}
+      AR_PYTHON_REPOSITORY: ${{ vars.AR_PYTHON_REPOSITORY }}
+    steps:
+      - name: Require registry configuration
+        run: |
+          for v in GCP_PROJECT_ID AR_LOCATION AR_PYTHON_REPOSITORY; do
+            [ -n "${!v}" ] || { echo "::error::Repository variable $v is not set on the artifact-registry environment."; exit 1; }
+          done
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-dist
+          path: dist/
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+          token_format: access_token
+      - name: Upload to Artifact Registry
+        env:
+          TWINE_USERNAME: oauth2accesstoken
+          TWINE_PASSWORD: ${{ steps.auth.outputs.access_token }}
+        run: |
+          pip install twine
+          twine upload --non-interactive \
+            --repository-url "https://${AR_LOCATION}-python.pkg.dev/${GCP_PROJECT_ID}/${AR_PYTHON_REPOSITORY}/" \
+            dist/*
