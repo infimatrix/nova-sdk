@@ -82,7 +82,7 @@ jobs:
           python -m venv /tmp/smoke
           /tmp/smoke/bin/pip install dist/*.whl
           cd /tmp && /tmp/smoke/bin/python -c "import nova_sdk, nova_sdk.aio; print(nova_sdk.__version__)"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: python-dist
           path: sdks/python/dist/
