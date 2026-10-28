@@ -19,6 +19,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the proje
 - Contract test that exercises every operation and validates each request against the OpenAPI document.
 
 ### Fixed
+- Credentials are now fully stripped from the `Location` reported by a redirect error when the password itself contains
+  `@` (the whole `user:se@cret@` used to be reported because `java.net.URI` parses it as a registry authority).
+  Found by mutation testing.
 - Path identifiers `.` and `..` are rejected with `NovaClientValidationException` instead of being sent as a raw dot-segment
   that servers and proxies normalise away (so `templates().get("..")` addressed `/api/v1/`). Found by the cross-language conformance suite.
 - A 2xx response that declares a JSON content type but carries an invalid body now raises `NovaApiException`

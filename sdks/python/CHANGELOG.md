@@ -19,6 +19,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the proje
 - `LICENSE` file, `CHANGELOG.md`, single-sourced version (`nova_sdk/_version.py`).
 
 ### Fixed
+- Credentials are now fully stripped from the `Location` reported by a redirect error when the password itself contains
+  `@` (`http://user:se@cret@host/` used to leave `cret@` in the message). Found by mutation testing.
 - Path identifiers `.` and `..` are rejected with `NovaValidationError` instead of being normalised away by the HTTP
   stack (which turned `templates.get("..")` into a request for `/api/v1/`). Found by the cross-language conformance suite.
 - A 2xx response that declares a JSON content type but carries an invalid body now raises `NovaAPIError`

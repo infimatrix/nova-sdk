@@ -2058,5 +2058,53 @@
     }
    }
   }
+ },
+ {
+  "id": "C-15c-redirect-location-strips-credentials",
+  "doc": "authentication: a 3xx raises a redirect error 'with credentials stripped from the reported location'; URL userinfo ends at the LAST '@' of the authority (RFC 3986 section 3.2), so no part of an '@'-containing password may remain",
+  "client": {
+   "api_key": "nova_key_abc"
+  },
+  "call": {
+   "op": "templates.get",
+   "id": "t-1"
+  },
+  "server": [
+   {
+    "status": 302,
+    "headers": {
+     "Location": "http://user:se@cret@evil.example/next"
+    },
+    "raw": ""
+   }
+  ],
+  "expect": {
+   "request_count": 1,
+   "outcome": {
+    "kind": "error",
+    "category": "Redirect",
+    "message_excludes": [
+     "cret",
+     "user",
+     "se@"
+    ]
+   }
+  },
+  "variants": [
+   {},
+   {
+    "server.0.headers.Location": "http://u:p%40ss@evil.example/next",
+    "expect.outcome.message_excludes": [
+     "p%40ss",
+     "u:p"
+    ]
+   },
+   {
+    "server.0.headers.Location": "http://:onlypw@evil.example/",
+    "expect.outcome.message_excludes": [
+     "onlypw"
+    ]
+   }
+  ]
  }
 ]

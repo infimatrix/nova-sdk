@@ -121,4 +121,21 @@ class RetryAndFormatTest {
             assertEquals("/api/v1/tenants/a%20b/members/c%2Fd/", server.last().path());
         }
     }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource(delimiter = '|', value = {
+        "http://user:pw@host.example/p?q=1#f|http://host.example/p?q=1#f",
+        "http://user:se@cret@host.example/next|http://host.example/next",
+        "http://u:p%40ss@host.example:8443/x|http://host.example:8443/x",
+        "http://:onlypw@host.example/|http://host.example/",
+        "http://host.example/a@b|http://host.example/a@b",
+    })
+    void redirectLocationUserinfoEndsAtTheLastAtSign(String location, String reported) {
+        // docs: credentials are stripped from the reported location; userinfo ends at the last '@' (RFC 3986 3.2).
+        try (MockServer server = new MockServer()) {
+            server.reply(new Reply(302, "text/plain", "", java.util.Map.of("Location", location), 0));
+            NovaException e = assertThrows(NovaException.class, () -> server.clientBuilder().build().templates().get("t"));
+            assertTrue(e.getMessage().contains("redirect to " + reported + "."), e.getMessage());
+        }
+    }
 }

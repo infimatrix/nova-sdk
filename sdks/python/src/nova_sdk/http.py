@@ -63,7 +63,9 @@ def _sanitize_redirect_location(location: str | None) -> str | None:
     try:
         parts = urlsplit(cleaned)
         if "@" in parts.netloc:
-            safe_netloc = parts.netloc.split("@", 1)[-1]
+            # userinfo ends at the LAST '@' of the authority (RFC 3986 3.2); splitting at the first would leak
+            # the tail of a password that itself contains '@'.
+            safe_netloc = parts.netloc.rsplit("@", 1)[-1]
             parts = parts._replace(netloc=safe_netloc)
             return urlunsplit(parts)
         return cleaned

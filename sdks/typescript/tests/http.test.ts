@@ -337,3 +337,15 @@ describe("conformance regressions", () => {
     expect((await client.http.request("GET", "files/x.txt")).data).toBe("plain text");
   });
 });
+
+describe("redirect location credential stripping", () => {
+  it.each([
+    ["http://user:pw@host.example/p?q=1#f", "http://host.example/p?q=1#f"],
+    ["http://user:se@cret@host.example/next", "http://host.example/next"], // '@' inside the password
+    ["http://u:p%40ss@host.example:8443/x", "http://host.example:8443/x"],
+    ["http://:onlypw@host.example/", "http://host.example/"],
+    ["http://host.example/a@b", "http://host.example/a@b"], // '@' in the path is not userinfo
+  ])("%s -> %s", (location, expected) => {
+    expect(sanitizeRedirectLocation(location)).toBe(expected);
+  });
+});

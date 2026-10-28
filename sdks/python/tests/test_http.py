@@ -398,3 +398,28 @@ def test_non_json_content_type_still_returned_as_text(mock_client_factory):
 
     client = mock_client_factory(handler)
     assert client.transport.request("GET", "files/x.txt").data == "plain text"
+
+
+@pytest.mark.parametrize(
+    "location,expected",
+    [
+        ("http://user:pw@host.example/p?q=1#f", "http://host.example/p?q=1#f"),
+        (
+            "http://user:se@cret@host.example/next",
+            "http://host.example/next",
+        ),  # '@' inside the password
+        ("http://u:p%40ss@host.example:8443/x", "http://host.example:8443/x"),
+        ("http://:onlypw@host.example/", "http://host.example/"),
+        ("/relative/path", "/relative/path"),
+        (
+            "http://host.example/a@b",
+            "http://host.example/a@b",
+        ),  # '@' in the path is not userinfo
+    ],
+)
+def test_redirect_location_userinfo_ends_at_the_last_at_sign(
+    location: str, expected: str
+):
+    from nova_sdk.http import _sanitize_redirect_location
+
+    assert _sanitize_redirect_location(location) == expected

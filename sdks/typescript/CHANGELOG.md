@@ -17,6 +17,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the proje
 - ESM + CommonJS builds with bundled type declarations.
 
 ### Fixed
+- Regression test pinning that credentials containing `@` are stripped from a redirect `Location` (the TypeScript
+  implementation was already correct; Python and Java were not).
 - Path identifiers `.` and `..` are rejected with `NovaValidationError` instead of being normalised away by the HTTP
   stack (which turned `templates.get("..")` into a request for `/api/v1/`). Found by the cross-language conformance suite.
 - A 2xx response that declares a JSON content type but carries an invalid body now raises `NovaAPIError`

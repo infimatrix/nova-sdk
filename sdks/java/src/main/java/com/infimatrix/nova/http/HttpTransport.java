@@ -458,16 +458,24 @@ public final class HttpTransport {
         if (location == null || location.isBlank()) {
             return null;
         }
-        try {
-            URI uri = URI.create(location.strip());
-            if (uri.getRawUserInfo() == null) {
-                return location.strip();
-            }
-            return new URI(uri.getScheme(), null, uri.getHost(), uri.getPort(), uri.getRawPath(), uri.getRawQuery(),
-                    uri.getRawFragment()).toString();
-        } catch (Exception e) {
-            return "<invalid-redirect-url>";
+        // Textual on purpose: java.net.URI treats "user:se@cret@host" as a registry-based authority and reports no
+        // userinfo, which would leave the credentials in place. Userinfo ends at the LAST '@' of the authority
+        // (RFC 3986 3.2).
+        String stripped = location.strip();
+        int schemeEnd = stripped.indexOf("://");
+        if (schemeEnd < 0) {
+            return stripped;
         }
+        int start = schemeEnd + 3;
+        int end = start;
+        while (end < stripped.length() && "/?#".indexOf(stripped.charAt(end)) < 0) {
+            end++;
+        }
+        int at = stripped.substring(start, end).lastIndexOf('@');
+        if (at < 0) {
+            return stripped;
+        }
+        return stripped.substring(0, start) + stripped.substring(start + at + 1);
     }
 
     private com.infimatrix.nova.errors.NovaApiException errorFrom(HttpResponse<byte[]> response) {
