@@ -1,0 +1,2062 @@
+[
+ {
+  "id": "C-01a-standard-headers",
+  "doc": "conventions: Behaviour/Headers",
+  "client": {
+   "api_key": "nova_key_abc",
+   "tenant_id": "00000000-0000-0000-0000-000000000001"
+  },
+  "call": {
+   "op": "health"
+  },
+  "server": [
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "status": "ok"
+     },
+     "meta": {
+      "correlation_id": "cid-1"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "requests": [
+    {
+     "method": "GET",
+     "path": "/api/v1/health/",
+     "headers_equal": {
+      "authorization": "Bearer nova_key_abc",
+      "accept": "application/json",
+      "x-tenant-id": "00000000-0000-0000-0000-000000000001"
+     },
+     "user_agent_regex": "^Nova-[A-Za-z.]+-SDK/\\d+\\.\\d+\\.\\d+"
+    }
+   ],
+   "outcome": {
+    "kind": "ok",
+    "data": {
+     "status": "ok"
+    }
+   }
+  }
+ },
+ {
+  "id": "C-01b-no-tenant-header",
+  "doc": "authentication: Tenancy (header omitted when unset)",
+  "client": {
+   "api_key": "nova_key_abc"
+  },
+  "call": {
+   "op": "health"
+  },
+  "server": [
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "status": "ok"
+     },
+     "meta": {
+      "correlation_id": "cid-1"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "requests": [
+    {
+     "method": "GET",
+     "path": "/api/v1/health/",
+     "headers_absent": [
+      "x-tenant-id"
+     ],
+     "headers_equal": {
+      "authorization": "Bearer nova_key_abc"
+     }
+    }
+   ],
+   "outcome": {
+    "kind": "ok"
+   }
+  }
+ },
+ {
+  "id": "C-02a-key-beats-token",
+  "doc": "authentication: API key wins",
+  "client": {
+   "api_key": "nova_key_abc",
+   "access_token": "tok_1"
+  },
+  "call": {
+   "op": "health"
+  },
+  "server": [
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "status": "ok"
+     },
+     "meta": {
+      "correlation_id": "cid-1"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "requests": [
+    {
+     "method": "GET",
+     "path": "/api/v1/health/",
+     "headers_equal": {
+      "authorization": "Bearer nova_key_abc"
+     }
+    }
+   ],
+   "outcome": {
+    "kind": "ok"
+   }
+  }
+ },
+ {
+  "id": "C-02b-token-only",
+  "doc": "authentication: JWT credential",
+  "client": {
+   "access_token": "tok_1"
+  },
+  "call": {
+   "op": "health"
+  },
+  "server": [
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "status": "ok"
+     },
+     "meta": {
+      "correlation_id": "cid-1"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "requests": [
+    {
+     "method": "GET",
+     "path": "/api/v1/health/",
+     "headers_equal": {
+      "authorization": "Bearer tok_1"
+     }
+    }
+   ],
+   "outcome": {
+    "kind": "ok"
+   }
+  }
+ },
+ {
+  "id": "C-03a-bearer-prefix-stripped-key",
+  "doc": "authentication: leading Bearer stripped",
+  "client": {
+   "api_key": "Bearer nova_key_abc"
+  },
+  "call": {
+   "op": "health"
+  },
+  "server": [
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "status": "ok"
+     },
+     "meta": {
+      "correlation_id": "cid-1"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "requests": [
+    {
+     "method": "GET",
+     "path": "/api/v1/health/",
+     "headers_equal": {
+      "authorization": "Bearer nova_key_abc"
+     }
+    }
+   ],
+   "outcome": {
+    "kind": "ok"
+   }
+  }
+ },
+ {
+  "id": "C-03b-bearer-prefix-stripped-token",
+  "doc": "authentication: whitespace and Bearer stripped",
+  "client": {
+   "access_token": "  Bearer tok_1 "
+  },
+  "call": {
+   "op": "health"
+  },
+  "server": [
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "status": "ok"
+     },
+     "meta": {
+      "correlation_id": "cid-1"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "requests": [
+    {
+     "method": "GET",
+     "path": "/api/v1/health/",
+     "headers_equal": {
+      "authorization": "Bearer tok_1"
+     }
+    }
+   ],
+   "outcome": {
+    "kind": "ok"
+   }
+  }
+ },
+ {
+  "id": "C-04-base-url-normalised",
+  "doc": "conventions: Base URL strips / , /api, /api/v1",
+  "client": {
+   "api_key": "nova_key_abc"
+  },
+  "call": {
+   "op": "health"
+  },
+  "server": [
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "status": "ok"
+     },
+     "meta": {
+      "correlation_id": "cid-1"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "requests": [
+    {
+     "method": "GET",
+     "path": "/api/v1/health/"
+    }
+   ],
+   "outcome": {
+    "kind": "ok"
+   }
+  },
+  "variants": [
+   {
+    "base_url_suffix": ""
+   },
+   {
+    "base_url_suffix": "/"
+   },
+   {
+    "base_url_suffix": "/api"
+   },
+   {
+    "base_url_suffix": "/api/"
+   },
+   {
+    "base_url_suffix": "/api/v1"
+   },
+   {
+    "base_url_suffix": "/api/v1/"
+   }
+  ]
+ },
+ {
+  "id": "C-05a-envelope-unwrapped",
+  "doc": "conventions: Envelope returns data",
+  "client": {
+   "api_key": "nova_key_abc"
+  },
+  "call": {
+   "op": "templates.get",
+   "id": "t-1"
+  },
+  "server": [
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "id": "t-1",
+      "name": "Welcome"
+     },
+     "meta": {
+      "correlation_id": "cid-1"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "requests": [
+    {
+     "method": "GET",
+     "path": "/api/v1/templates/t-1/"
+    }
+   ],
+   "outcome": {
+    "kind": "ok",
+    "data": {
+     "id": "t-1",
+     "name": "Welcome"
+    }
+   }
+  }
+ },
+ {
+  "id": "C-05b-unenveloped-as-is",
+  "doc": "conventions: unenveloped JSON returned as is",
+  "client": {
+   "api_key": "nova_key_abc"
+  },
+  "call": {
+   "op": "templates.get",
+   "id": "t-2"
+  },
+  "server": [
+   {
+    "status": 200,
+    "json": {
+     "id": "t-2",
+     "name": "Raw"
+    }
+   }
+  ],
+  "expect": {
+   "requests": [
+    {
+     "method": "GET",
+     "path": "/api/v1/templates/t-2/"
+    }
+   ],
+   "outcome": {
+    "kind": "ok",
+    "data": {
+     "id": "t-2",
+     "name": "Raw"
+    }
+   }
+  }
+ },
+ {
+  "id": "C-06-no-content",
+  "doc": "conventions: 204 -> no data",
+  "client": {
+   "api_key": "nova_key_abc"
+  },
+  "call": {
+   "op": "templates.delete",
+   "id": "t-1"
+  },
+  "server": [
+   {
+    "status": 204
+   }
+  ],
+  "expect": {
+   "requests": [
+    {
+     "method": "DELETE",
+     "path": "/api/v1/templates/t-1/"
+    }
+   ],
+   "outcome": {
+    "kind": "ok",
+    "data": null
+   }
+  }
+ },
+ {
+  "id": "C-07a-hostile-path-id",
+  "doc": "conventions: Path ids validated and URL-encoded (no extra segment, query or dot-segment)",
+  "client": {
+   "api_key": "nova_key_abc"
+  },
+  "call": {
+   "op": "templates.get",
+   "id": "PLACEHOLDER"
+  },
+  "server": [
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "id": "t-1",
+      "name": "Welcome"
+     },
+     "meta": {
+      "correlation_id": "cid-1"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "path_id_invariant": {
+    "prefix": "/api/v1/templates/",
+    "suffix": "/"
+   },
+   "outcome": {
+    "kind": "ok_or_validation_without_request"
+   }
+  },
+  "variants": [
+   {
+    "call.id": "a/b"
+   },
+   {
+    "call.id": "../x"
+   },
+   {
+    "call.id": ".."
+   },
+   {
+    "call.id": "."
+   },
+   {
+    "call.id": "a?b=c"
+   },
+   {
+    "call.id": "a#frag"
+   },
+   {
+    "call.id": "a b"
+   },
+   {
+    "call.id": "%2F"
+   },
+   {
+    "call.id": "a%2Fb"
+   },
+   {
+    "call.id": "x/../y"
+   },
+   {
+    "call.id": "\\\\evil"
+   },
+   {
+    "call.id": "é/ü"
+   },
+   {
+    "call.id": "a;b"
+   },
+   {
+    "call.id": "?"
+   },
+   {
+    "call.id": "#"
+   }
+  ]
+ },
+ {
+  "id": "C-07b-empty-path-id",
+  "doc": "conventions: Path ids validated non-empty",
+  "client": {
+   "api_key": "nova_key_abc"
+  },
+  "call": {
+   "op": "templates.get",
+   "id": ""
+  },
+  "server": [
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "id": "t-1",
+      "name": "Welcome"
+     },
+     "meta": {
+      "correlation_id": "cid-1"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "requests": [],
+   "outcome": {
+    "kind": "error",
+    "category": "Validation"
+   }
+  },
+  "variants": [
+   {
+    "call.id": ""
+   },
+   {
+    "call.id": "   "
+   }
+  ]
+ },
+ {
+  "id": "C-08-query-encoding",
+  "doc": "RFC 3986 + conventions: search arrives intact",
+  "client": {
+   "api_key": "nova_key_abc"
+  },
+  "call": {
+   "op": "templates.list",
+   "search": "PLACEHOLDER"
+  },
+  "server": [
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "success": true,
+      "pagination": {
+       "count": 0,
+       "next": null,
+       "previous": null,
+       "page": 1,
+       "total_pages": 1,
+       "page_size": 2
+      },
+      "results": []
+     },
+     "meta": {
+      "correlation_id": "cid-p"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "requests": [
+    {
+     "method": "GET",
+     "path": "/api/v1/templates/",
+     "query_has": {
+      "search": "PLACEHOLDER"
+     }
+    }
+   ],
+   "outcome": {
+    "kind": "ok"
+   }
+  },
+  "variants": [
+   {
+    "call.search": "plain",
+    "expect.requests.0.query_has.search": "plain"
+   },
+   {
+    "call.search": "a&b=c",
+    "expect.requests.0.query_has.search": "a&b=c"
+   },
+   {
+    "call.search": "x y",
+    "expect.requests.0.query_has.search": "x y"
+   },
+   {
+    "call.search": "1+1=2",
+    "expect.requests.0.query_has.search": "1+1=2"
+   },
+   {
+    "call.search": "100%",
+    "expect.requests.0.query_has.search": "100%"
+   },
+   {
+    "call.search": "%20",
+    "expect.requests.0.query_has.search": "%20"
+   },
+   {
+    "call.search": "é☃😀",
+    "expect.requests.0.query_has.search": "é☃😀"
+   },
+   {
+    "call.search": "a/b?c#d",
+    "expect.requests.0.query_has.search": "a/b?c#d"
+   },
+   {
+    "call.search": "semi;colon",
+    "expect.requests.0.query_has.search": "semi;colon"
+   },
+   {
+    "call.search": "quote\"'<>",
+    "expect.requests.0.query_has.search": "quote\"'<>"
+   }
+  ]
+ },
+ {
+  "id": "C-09-get-retried-on-503",
+  "doc": "error-handling: idempotent GET retried on 503",
+  "client": {
+   "api_key": "nova_key_abc",
+   "max_retries": 3
+  },
+  "call": {
+   "op": "templates.get",
+   "id": "t-1"
+  },
+  "server": [
+   {
+    "status": 503,
+    "json": {
+     "success": false,
+     "message": "down",
+     "data": null,
+     "error": {
+      "code": "SERVICE_UNAVAILABLE",
+      "message": "down"
+     },
+     "meta": {
+      "correlation_id": "cid-err"
+     }
+    }
+   },
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "id": "t-1",
+      "name": "Welcome"
+     },
+     "meta": {
+      "correlation_id": "cid-1"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "request_count": 2,
+   "outcome": {
+    "kind": "ok",
+    "data": {
+     "id": "t-1",
+     "name": "Welcome"
+    }
+   }
+  },
+  "variants": [
+   {
+    "server.0.status": 503
+   },
+   {
+    "server.0.status": 502
+   },
+   {
+    "server.0.status": 504
+   },
+   {
+    "server.0.status": 429
+   }
+  ]
+ },
+ {
+  "id": "C-10a-post-not-retried",
+  "doc": "error-handling: POST never retried",
+  "client": {
+   "api_key": "nova_key_abc",
+   "max_retries": 3
+  },
+  "call": {
+   "op": "templates.create",
+   "name": "N"
+  },
+  "server": [
+   {
+    "status": 503,
+    "json": {
+     "success": false,
+     "message": "down",
+     "data": null,
+     "error": {
+      "code": "SERVICE_UNAVAILABLE",
+      "message": "down"
+     },
+     "meta": {
+      "correlation_id": "cid-err"
+     }
+    }
+   },
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "id": "t-9",
+      "name": "N"
+     },
+     "meta": {
+      "correlation_id": "cid-1"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "request_count": 1,
+   "outcome": {
+    "kind": "error",
+    "category": "Server",
+    "status": 503
+   }
+  },
+  "variants": [
+   {
+    "server.0.status": 503,
+    "expect.outcome.category": "Server",
+    "expect.outcome.status": 503
+   },
+   {
+    "server.0.status": 429,
+    "expect.outcome.category": "RateLimit",
+    "expect.outcome.status": 429
+   },
+   {
+    "server.0.status": 502,
+    "expect.outcome.category": "Server",
+    "expect.outcome.status": 502
+   },
+   {
+    "server.0.status": 504,
+    "expect.outcome.category": "Server",
+    "expect.outcome.status": 504
+   }
+  ]
+ },
+ {
+  "id": "C-10b-delete-not-retried",
+  "doc": "error-handling: DELETE never retried",
+  "client": {
+   "api_key": "nova_key_abc",
+   "max_retries": 3
+  },
+  "call": {
+   "op": "templates.delete",
+   "id": "t-1"
+  },
+  "server": [
+   {
+    "status": 503,
+    "json": {
+     "success": false,
+     "message": "down",
+     "data": null,
+     "error": {
+      "code": "SERVICE_UNAVAILABLE",
+      "message": "down"
+     },
+     "meta": {
+      "correlation_id": "cid-err"
+     }
+    }
+   },
+   {
+    "status": 204
+   }
+  ],
+  "expect": {
+   "request_count": 1,
+   "outcome": {
+    "kind": "error",
+    "category": "Server",
+    "status": 503
+   }
+  }
+ },
+ {
+  "id": "C-11a-retry-exhaustion",
+  "doc": "error-handling: max_retries bounds attempts",
+  "client": {
+   "api_key": "nova_key_abc",
+   "max_retries": 2
+  },
+  "call": {
+   "op": "templates.get",
+   "id": "t-1"
+  },
+  "server": [
+   {
+    "status": 503,
+    "json": {
+     "success": false,
+     "message": "down",
+     "data": null,
+     "error": {
+      "code": "SERVICE_UNAVAILABLE",
+      "message": "down"
+     },
+     "meta": {
+      "correlation_id": "cid-err"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "request_count": 3,
+   "outcome": {
+    "kind": "error",
+    "category": "Server",
+    "status": 503
+   }
+  }
+ },
+ {
+  "id": "C-11b-zero-retries",
+  "doc": "error-handling: max_retries 0 -> one attempt",
+  "client": {
+   "api_key": "nova_key_abc",
+   "max_retries": 0
+  },
+  "call": {
+   "op": "templates.get",
+   "id": "t-1"
+  },
+  "server": [
+   {
+    "status": 503,
+    "json": {
+     "success": false,
+     "message": "down",
+     "data": null,
+     "error": {
+      "code": "SERVICE_UNAVAILABLE",
+      "message": "down"
+     },
+     "meta": {
+      "correlation_id": "cid-err"
+     }
+    }
+   },
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "id": "t-1",
+      "name": "Welcome"
+     },
+     "meta": {
+      "correlation_id": "cid-1"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "request_count": 1,
+   "outcome": {
+    "kind": "error",
+    "category": "Server",
+    "status": 503
+   }
+  }
+ },
+ {
+  "id": "C-12a-retry-after-zero-retried",
+  "doc": "error-handling: Retry-After honoured",
+  "client": {
+   "api_key": "nova_key_abc",
+   "max_retries": 3
+  },
+  "call": {
+   "op": "templates.get",
+   "id": "t-1"
+  },
+  "server": [
+   {
+    "status": 429,
+    "json": {
+     "success": false,
+     "message": "slow",
+     "data": null,
+     "error": {
+      "code": "RATE_LIMIT_EXCEEDED",
+      "message": "slow"
+     },
+     "meta": {
+      "correlation_id": "cid-err"
+     }
+    },
+    "headers": {
+     "Retry-After": "0"
+    }
+   },
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "id": "t-1",
+      "name": "Welcome"
+     },
+     "meta": {
+      "correlation_id": "cid-1"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "request_count": 2,
+   "outcome": {
+    "kind": "ok",
+    "data": {
+     "id": "t-1",
+     "name": "Welcome"
+    }
+   }
+  }
+ },
+ {
+  "id": "C-12b-retry-after-exposed",
+  "doc": "error-handling: RateLimit retry_after in seconds",
+  "client": {
+   "api_key": "nova_key_abc",
+   "max_retries": 0
+  },
+  "call": {
+   "op": "templates.get",
+   "id": "t-1"
+  },
+  "server": [
+   {
+    "status": 429,
+    "json": {
+     "success": false,
+     "message": "slow",
+     "data": null,
+     "error": {
+      "code": "RATE_LIMIT_EXCEEDED",
+      "message": "slow"
+     },
+     "meta": {
+      "correlation_id": "cid-err"
+     }
+    },
+    "headers": {
+     "Retry-After": "7"
+    }
+   }
+  ],
+  "expect": {
+   "request_count": 1,
+   "outcome": {
+    "kind": "error",
+    "category": "RateLimit",
+    "status": 429,
+    "retry_after": 7
+   }
+  }
+ },
+ {
+  "id": "C-13-status-to-error-class",
+  "doc": "error-handling: status -> error table (POST so nothing is retried)",
+  "client": {
+   "api_key": "nova_key_abc"
+  },
+  "call": {
+   "op": "templates.create",
+   "name": "N"
+  },
+  "server": [
+   {
+    "status": 400,
+    "json": {
+     "success": false,
+     "message": "m",
+     "data": null,
+     "error": {
+      "code": "X",
+      "message": "m"
+     },
+     "meta": {
+      "correlation_id": "cid-err"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "request_count": 1,
+   "outcome": {
+    "kind": "error",
+    "category": "Validation",
+    "status": 400
+   }
+  },
+  "variants": [
+   {
+    "server.0.status": 400,
+    "expect.outcome.category": "Validation",
+    "expect.outcome.status": 400
+   },
+   {
+    "server.0.status": 401,
+    "expect.outcome.category": "Authentication",
+    "expect.outcome.status": 401
+   },
+   {
+    "server.0.status": 403,
+    "expect.outcome.category": "Permission",
+    "expect.outcome.status": 403
+   },
+   {
+    "server.0.status": 404,
+    "expect.outcome.category": "NotFound",
+    "expect.outcome.status": 404
+   },
+   {
+    "server.0.status": 409,
+    "expect.outcome.category": "API",
+    "expect.outcome.status": 409
+   },
+   {
+    "server.0.status": 418,
+    "expect.outcome.category": "API",
+    "expect.outcome.status": 418
+   },
+   {
+    "server.0.status": 422,
+    "expect.outcome.category": "API",
+    "expect.outcome.status": 422
+   },
+   {
+    "server.0.status": 429,
+    "expect.outcome.category": "RateLimit",
+    "expect.outcome.status": 429
+   },
+   {
+    "server.0.status": 500,
+    "expect.outcome.category": "Server",
+    "expect.outcome.status": 500
+   },
+   {
+    "server.0.status": 502,
+    "expect.outcome.category": "Server",
+    "expect.outcome.status": 502
+   },
+   {
+    "server.0.status": 503,
+    "expect.outcome.category": "Server",
+    "expect.outcome.status": 503
+   },
+   {
+    "server.0.status": 504,
+    "expect.outcome.category": "Server",
+    "expect.outcome.status": 504
+   }
+  ]
+ },
+ {
+  "id": "C-14a-error-envelope-fields",
+  "doc": "error-handling: every error carries status, code, details and correlation id from the envelope, whatever its class",
+  "client": {
+   "api_key": "nova_key_abc"
+  },
+  "call": {
+   "op": "templates.create",
+   "name": "N"
+  },
+  "server": [
+   {
+    "status": 400,
+    "json": {
+     "success": false,
+     "message": "name: This field is required.",
+     "data": null,
+     "error": {
+      "code": "VALIDATION_ERROR",
+      "message": "name: This field is required.",
+      "details": {
+       "name": [
+        "This field is required."
+       ]
+      }
+     },
+     "meta": {
+      "correlation_id": "cid-9"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "request_count": 1,
+   "outcome": {
+    "kind": "error",
+    "category": "Validation",
+    "status": 400,
+    "code": "VALIDATION_ERROR",
+    "correlation_id": "cid-9",
+    "details_keys": [
+     "name"
+    ],
+    "message_contains": [
+     "required"
+    ]
+   }
+  },
+  "variants": [
+   {
+    "server.0.status": 400,
+    "expect.outcome.category": "Validation",
+    "expect.outcome.status": 400
+   },
+   {
+    "server.0.status": 401,
+    "expect.outcome.category": "Authentication",
+    "expect.outcome.status": 401
+   },
+   {
+    "server.0.status": 403,
+    "expect.outcome.category": "Permission",
+    "expect.outcome.status": 403
+   },
+   {
+    "server.0.status": 404,
+    "expect.outcome.category": "NotFound",
+    "expect.outcome.status": 404
+   },
+   {
+    "server.0.status": 409,
+    "expect.outcome.category": "API",
+    "expect.outcome.status": 409
+   },
+   {
+    "server.0.status": 418,
+    "expect.outcome.category": "API",
+    "expect.outcome.status": 418
+   },
+   {
+    "server.0.status": 429,
+    "expect.outcome.category": "RateLimit",
+    "expect.outcome.status": 429
+   },
+   {
+    "server.0.status": 500,
+    "expect.outcome.category": "Server",
+    "expect.outcome.status": 500
+   },
+   {
+    "server.0.status": 503,
+    "expect.outcome.category": "Server",
+    "expect.outcome.status": 503
+   }
+  ]
+ },
+ {
+  "id": "C-14b-legacy-error-bodies",
+  "doc": "error-handling: legacy {detail}/{error} shapes classified by status",
+  "client": {
+   "api_key": "nova_key_abc"
+  },
+  "call": {
+   "op": "templates.get",
+   "id": "t-1"
+  },
+  "server": [
+   {
+    "status": 404,
+    "json": {
+     "detail": "Not found."
+    }
+   }
+  ],
+  "expect": {
+   "request_count": 1,
+   "outcome": {
+    "kind": "error",
+    "category": "NotFound",
+    "status": 404,
+    "message_contains": [
+     "Not found"
+    ]
+   }
+  },
+  "variants": [
+   {},
+   {
+    "server.0.json": {
+     "error": "boom"
+    },
+    "server.0.status": 400,
+    "expect.outcome.category": "Validation",
+    "expect.outcome.status": 400,
+    "expect.outcome.message_contains": [
+     "boom"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "C-15-redirect-not-followed",
+  "doc": "authentication: redirects never followed",
+  "client": {
+   "api_key": "nova_key_abc"
+  },
+  "call": {
+   "op": "templates.get",
+   "id": "t-1"
+  },
+  "server": [
+   {
+    "status": 302,
+    "headers": {
+     "Location": "/elsewhere/"
+    },
+    "raw": ""
+   },
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "id": "t-1",
+      "name": "Welcome"
+     },
+     "meta": {
+      "correlation_id": "cid-1"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "request_count": 1,
+   "outcome": {
+    "kind": "error",
+    "category": "Redirect"
+   }
+  },
+  "variants": [
+   {
+    "server.0.status": 300
+   },
+   {
+    "server.0.status": 301
+   },
+   {
+    "server.0.status": 302
+   },
+   {
+    "server.0.status": 303
+   },
+   {
+    "server.0.status": 304
+   },
+   {
+    "server.0.status": 307
+   },
+   {
+    "server.0.status": 308
+   },
+   {
+    "server.0.status": 399
+   }
+  ]
+ },
+ {
+  "id": "C-16a-malformed-success-body",
+  "doc": "error-handling: a 200 with invalid JSON must not look like success",
+  "client": {
+   "api_key": "nova_key_abc",
+   "max_retries": 0
+  },
+  "call": {
+   "op": "templates.get",
+   "id": "t-1"
+  },
+  "server": [
+   {
+    "status": 200,
+    "raw": "{not json",
+    "content_type": "application/json"
+   }
+  ],
+  "expect": {
+   "request_count": 1,
+   "outcome": {
+    "kind": "error"
+   }
+  }
+ },
+ {
+  "id": "C-17-secret-not-in-error",
+  "doc": "authentication: credentials never in messages",
+  "client": {
+   "api_key": "nova_key_TOPSECRET_9f8e7d",
+   "access_token": "tok_TOPSECRET_1a2b3c"
+  },
+  "call": {
+   "op": "templates.get",
+   "id": "t-1"
+  },
+  "server": [
+   {
+    "status": 401,
+    "json": {
+     "success": false,
+     "message": "Invalid credentials",
+     "data": null,
+     "error": {
+      "code": "AUTHENTICATION_FAILED",
+      "message": "Invalid credentials"
+     },
+     "meta": {
+      "correlation_id": "cid-err"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "request_count": 1,
+   "outcome": {
+    "kind": "error",
+    "category": "Authentication",
+    "status": 401,
+    "message_excludes": [
+     "nova_key_TOPSECRET_9f8e7d",
+     "TOPSECRET",
+     "tok_TOPSECRET_1a2b3c"
+    ]
+   }
+  }
+ },
+ {
+  "id": "C-18a-list-page-params",
+  "doc": "conventions: page/page_size sent; has_next from pagination.next",
+  "client": {
+   "api_key": "nova_key_abc"
+  },
+  "call": {
+   "op": "templates.list",
+   "page": 1,
+   "page_size": 2
+  },
+  "server": [
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "success": true,
+      "pagination": {
+       "count": 2,
+       "next": "http://x/?page=2",
+       "previous": null,
+       "page": 1,
+       "total_pages": 3,
+       "page_size": 2
+      },
+      "results": [
+       {
+        "id": "a",
+        "name": "A"
+       },
+       {
+        "id": "b",
+        "name": "B"
+       }
+      ]
+     },
+     "meta": {
+      "correlation_id": "cid-p"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "requests": [
+    {
+     "method": "GET",
+     "path": "/api/v1/templates/",
+     "query_has": {
+      "page": "1",
+      "page_size": "2"
+     }
+    }
+   ],
+   "outcome": {
+    "kind": "ok",
+    "data": {
+     "ids": [
+      "a",
+      "b"
+     ],
+     "has_next": true
+    }
+   }
+  }
+ },
+ {
+  "id": "C-18b-iterate-all-pages",
+  "doc": "conventions: helpers iterate all pages in order (first request need not carry page=1: the docs do not require it)",
+  "client": {
+   "api_key": "nova_key_abc"
+  },
+  "call": {
+   "op": "templates.iter_all",
+   "page_size": 2
+  },
+  "server": [
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "success": true,
+      "pagination": {
+       "count": 2,
+       "next": "http://x/?page=2",
+       "previous": null,
+       "page": 1,
+       "total_pages": 3,
+       "page_size": 2
+      },
+      "results": [
+       {
+        "id": "a",
+        "name": "A"
+       },
+       {
+        "id": "b",
+        "name": "B"
+       }
+      ]
+     },
+     "meta": {
+      "correlation_id": "cid-p"
+     }
+    }
+   },
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "success": true,
+      "pagination": {
+       "count": 2,
+       "next": "http://x/?page=3",
+       "previous": null,
+       "page": 2,
+       "total_pages": 3,
+       "page_size": 2
+      },
+      "results": [
+       {
+        "id": "c",
+        "name": "C"
+       },
+       {
+        "id": "d",
+        "name": "D"
+       }
+      ]
+     },
+     "meta": {
+      "correlation_id": "cid-p"
+     }
+    },
+    "when_query": {
+     "page": "2"
+    }
+   },
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "success": true,
+      "pagination": {
+       "count": 1,
+       "next": null,
+       "previous": null,
+       "page": 3,
+       "total_pages": 3,
+       "page_size": 2
+      },
+      "results": [
+       {
+        "id": "e",
+        "name": "E"
+       }
+      ]
+     },
+     "meta": {
+      "correlation_id": "cid-p"
+     }
+    },
+    "when_query": {
+     "page": "3"
+    }
+   }
+  ],
+  "expect": {
+   "requests": [
+    {
+     "query_has": {
+      "page_size": "2"
+     }
+    },
+    {
+     "query_has": {
+      "page": "2",
+      "page_size": "2"
+     }
+    },
+    {
+     "query_has": {
+      "page": "3",
+      "page_size": "2"
+     }
+    }
+   ],
+   "outcome": {
+    "kind": "ok",
+    "data": {
+     "ids": [
+      "a",
+      "b",
+      "c",
+      "d",
+      "e"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "id": "C-18c-single-empty-page",
+  "doc": "conventions: empty terminal page",
+  "client": {
+   "api_key": "nova_key_abc"
+  },
+  "call": {
+   "op": "templates.iter_all",
+   "page_size": 2
+  },
+  "server": [
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "success": true,
+      "pagination": {
+       "count": 0,
+       "next": null,
+       "previous": null,
+       "page": 1,
+       "total_pages": 1,
+       "page_size": 2
+      },
+      "results": []
+     },
+     "meta": {
+      "correlation_id": "cid-p"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "request_count": 1,
+   "outcome": {
+    "kind": "ok",
+    "data": {
+     "ids": []
+    }
+   }
+  }
+ },
+ {
+  "id": "C-18d-stops-when-no-next",
+  "doc": "conventions: has_next false stops iteration",
+  "client": {
+   "api_key": "nova_key_abc"
+  },
+  "call": {
+   "op": "templates.iter_all",
+   "page_size": 2
+  },
+  "server": [
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "success": true,
+      "pagination": {
+       "count": 2,
+       "next": null,
+       "previous": null,
+       "page": 1,
+       "total_pages": 3,
+       "page_size": 2
+      },
+      "results": [
+       {
+        "id": "a",
+        "name": "A"
+       },
+       {
+        "id": "b",
+        "name": "B"
+       }
+      ]
+     },
+     "meta": {
+      "correlation_id": "cid-p"
+     }
+    }
+   },
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "success": true,
+      "pagination": {
+       "count": 1,
+       "next": null,
+       "previous": null,
+       "page": 2,
+       "total_pages": 3,
+       "page_size": 2
+      },
+      "results": [
+       {
+        "id": "c",
+        "name": "C"
+       }
+      ]
+     },
+     "meta": {
+      "correlation_id": "cid-p"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "request_count": 1,
+   "outcome": {
+    "kind": "ok",
+    "data": {
+     "ids": [
+      "a",
+      "b"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "id": "C-19a-tenant-override",
+  "doc": "authentication: per-call tenant replaces default",
+  "client": {
+   "api_key": "nova_key_abc",
+   "tenant_id": "00000000-0000-0000-0000-000000000001"
+  },
+  "call": {
+   "op": "templates.get",
+   "id": "t-1",
+   "tenant_id": "00000000-0000-0000-0000-000000000002"
+  },
+  "server": [
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "id": "t-1",
+      "name": "Welcome"
+     },
+     "meta": {
+      "correlation_id": "cid-1"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "requests": [
+    {
+     "method": "GET",
+     "path": "/api/v1/templates/t-1/",
+     "headers_equal": {
+      "x-tenant-id": "00000000-0000-0000-0000-000000000002"
+     }
+    }
+   ],
+   "outcome": {
+    "kind": "ok"
+   }
+  }
+ },
+ {
+  "id": "C-19b-invalid-tenant",
+  "doc": "authentication: tenant ids validated as UUIDs client-side",
+  "client": {
+   "api_key": "nova_key_abc",
+   "tenant_id": "00000000-0000-0000-0000-000000000001"
+  },
+  "call": {
+   "op": "templates.get",
+   "id": "t-1",
+   "tenant_id": "not-a-uuid"
+  },
+  "server": [
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "id": "t-1",
+      "name": "Welcome"
+     },
+     "meta": {
+      "correlation_id": "cid-1"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "requests": [],
+   "outcome": {
+    "kind": "error",
+    "category": "Validation"
+   }
+  }
+ },
+ {
+  "id": "C-20-connection-refused",
+  "doc": "error-handling: connection failure",
+  "client": {
+   "api_key": "nova_key_abc",
+   "max_retries": 1
+  },
+  "call": {
+   "op": "templates.get",
+   "id": "t-1"
+  },
+  "server": [],
+  "expect": {
+   "outcome": {
+    "kind": "error",
+    "category": "Connection",
+    "code": "CONNECTION_ERROR"
+   }
+  },
+  "server_mode": "refused",
+  "variants": [
+   {},
+   {
+    "call.op": "templates.create",
+    "call.name": "N"
+   }
+  ]
+ },
+ {
+  "id": "C-21-timeout",
+  "doc": "error-handling: timeout is an error, not success",
+  "client": {
+   "api_key": "nova_key_abc",
+   "max_retries": 0,
+   "timeout_ms": 300
+  },
+  "call": {
+   "op": "templates.get",
+   "id": "t-1"
+  },
+  "server": [
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "id": "t-1",
+      "name": "Welcome"
+     },
+     "meta": {
+      "correlation_id": "cid-1"
+     }
+    },
+    "delay_ms": 1500
+   }
+  ],
+  "expect": {
+   "request_count": 1,
+   "outcome": {
+    "kind": "error",
+    "category": "Timeout",
+    "code": "REQUEST_TIMEOUT"
+   }
+  },
+  "variants": [
+   {},
+   {
+    "call.op": "templates.create",
+    "call.name": "N",
+    "client.max_retries": 3
+   }
+  ]
+ },
+ {
+  "id": "C-22-body-serialisation",
+  "doc": "JSON body carries supplied values exactly, Unicode intact",
+  "client": {
+   "api_key": "nova_key_abc"
+  },
+  "call": {
+   "op": "templates.create",
+   "name": "Zoë ☃ \"q\"\nline2 😀",
+   "subject": "Hi"
+  },
+  "server": [
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "id": "t-9",
+      "name": "x"
+     },
+     "meta": {
+      "correlation_id": "cid-1"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v1/templates/",
+     "content_type_prefix": "application/json",
+     "body_json_subset": {
+      "name": "Zoë ☃ \"q\"\nline2 😀",
+      "subject": "Hi"
+     }
+    }
+   ],
+   "outcome": {
+    "kind": "ok"
+   }
+  }
+ },
+ {
+  "id": "C-15b-2xx-is-success",
+  "doc": "HTTP semantics: every 2xx is success (299 is the last), 300 is the first redirect",
+  "client": {
+   "api_key": "nova_key_abc"
+  },
+  "call": {
+   "op": "templates.get",
+   "id": "t-1"
+  },
+  "server": [
+   {
+    "status": 201,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "id": "t-1",
+      "name": "Welcome"
+     },
+     "meta": {
+      "correlation_id": "cid-1"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "request_count": 1,
+   "outcome": {
+    "kind": "ok",
+    "data": {
+     "id": "t-1",
+     "name": "Welcome"
+    }
+   }
+  },
+  "variants": [
+   {
+    "server.0.status": 200
+   },
+   {
+    "server.0.status": 201
+   },
+   {
+    "server.0.status": 202
+   },
+   {
+    "server.0.status": 203
+   },
+   {
+    "server.0.status": 299
+   }
+  ]
+ },
+ {
+  "id": "C-11c-backoff-doubles",
+  "doc": "conventions: backoff = base * 2^attempt; 100 ms base, jitter off, 3 retries -> gaps of about 100, 200, 400 ms (a linear 100,200,300 schedule must fail; lower bounds exact, upper bounds generous for scheduling noise)",
+  "client": {
+   "api_key": "nova_key_abc",
+   "max_retries": 3,
+   "retry_backoff_ms": 100
+  },
+  "call": {
+   "op": "templates.get",
+   "id": "t-1"
+  },
+  "server": [
+   {
+    "status": 503,
+    "json": {
+     "success": false,
+     "message": "down",
+     "data": null,
+     "error": {
+      "code": "SERVICE_UNAVAILABLE",
+      "message": "down"
+     },
+     "meta": {
+      "correlation_id": "cid-err"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "request_count": 4,
+   "gaps_ms": [
+    [
+     95,
+     700
+    ],
+    [
+     190,
+     1000
+    ],
+    [
+     380,
+     1500
+    ]
+   ],
+   "outcome": {
+    "kind": "error",
+    "category": "Server",
+    "status": 503
+   }
+  }
+ },
+ {
+  "id": "C-12c-retry-after-waits",
+  "doc": "error-handling: Retry-After is honoured; 1 s header -> about 1 s before the retry, not the (1 ms) configured backoff",
+  "client": {
+   "api_key": "nova_key_abc",
+   "max_retries": 1,
+   "retry_backoff_ms": 1
+  },
+  "call": {
+   "op": "templates.get",
+   "id": "t-1"
+  },
+  "server": [
+   {
+    "status": 429,
+    "json": {
+     "success": false,
+     "message": "slow",
+     "data": null,
+     "error": {
+      "code": "RATE_LIMIT_EXCEEDED",
+      "message": "slow"
+     },
+     "meta": {
+      "correlation_id": "cid-err"
+     }
+    },
+    "headers": {
+     "Retry-After": "1"
+    }
+   },
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "id": "t-1",
+      "name": "Welcome"
+     },
+     "meta": {
+      "correlation_id": "cid-1"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "request_count": 2,
+   "gaps_ms": [
+    [
+     950,
+     2500
+    ]
+   ],
+   "outcome": {
+    "kind": "ok",
+    "data": {
+     "id": "t-1",
+     "name": "Welcome"
+    }
+   }
+  }
+ }
+]
