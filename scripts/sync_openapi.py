@@ -41,7 +41,7 @@ def _display(path: Path) -> str:
 
 def load(source: str) -> tuple[bytes, dict]:
     if source.startswith("https://"):
-        with urllib.request.urlopen(source, timeout=30) as response:
+        with urllib.request.urlopen(source, timeout=30) as response:  # nosec B310 - https only, checked above
             raw = response.read()
     elif source.startswith("http://"):
         sys.exit(

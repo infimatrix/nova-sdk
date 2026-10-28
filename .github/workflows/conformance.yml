@@ -1,0 +1,64 @@
+name: Cross-language conformance
+
+# Runs the same neutral scenarios (tests/conformance/scenarios.json) against the Python, TypeScript and Java SDKs
+# over real sockets, plus the tests of the checker itself. Expected values come from the documented SDK policy,
+# not from SDK code. Local mock server only: no backend, no credentials, no publishing.
+on:
+  pull_request:
+    paths:
+      - "sdks/**"
+      - "tests/conformance/**"
+      - "openapi/**"
+      - ".github/workflows/conformance.yml"
+  push:
+    branches: [main]
+    paths:
+      - "sdks/**"
+      - "tests/conformance/**"
+      - "openapi/**"
+
+permissions:
+  contents: read
+
+jobs:
+  conformance:
+    name: Python, TypeScript and Java agree with the documented policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements-dev.txt
+            sdks/python/pyproject.toml
+      - run: pip install -r requirements-dev.txt -e sdks/python
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: sdks/typescript/package-lock.json
+      - run: npm ci && npm run build
+        working-directory: sdks/typescript
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - run: mvn -B -ntp -DskipTests compile
+        working-directory: sdks/java
+      - name: Checker tests (the checker must reject wrong behaviour)
+        run: pytest tests/conformance
+      - name: Conformance scenarios x 3 SDKs
+        run: python tests/conformance/conformance.py --json-out conformance-results.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: conformance-results
+          path: conformance-results.json
+          retention-days: 7
+          if-no-files-found: ignore

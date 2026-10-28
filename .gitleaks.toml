@@ -1,0 +1,17 @@
+# Secret-scanning configuration (gitleaks). Default rules apply; the allowlist below covers ONLY the synthetic
+# credentials that the SDK test suites deliberately use to prove redaction and header handling.
+# Each pattern is a fixed fake format, never a real key. Review any new entry as carefully as a new secret.
+title = "nova-sdk"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Synthetic credentials used by tests and conformance scenarios"
+condition = "OR"
+regexTarget = "match"
+regexes = [
+  '''nova_key_(test|live|sensitive|TOPSECRET|abc|x)[A-Za-z0-9_]*''',
+  '''tok_TOPSECRET_[0-9a-f]+''',
+  '''whsec_(newsecret)?[0-9a-f]{16,}[A-Za-z0-9]*''',
+]
