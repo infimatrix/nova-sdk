@@ -1,7 +1,7 @@
 {
   "name": "@infimatrix/nova-sdk",
   "version": "0.1.0",
-  "description": "Official TypeScript/JavaScript SDK for Nova — Dynamic Email Template & Email Delivery Platform",
+  "description": "Official TypeScript/JavaScript SDK for Nova \u2014 Dynamic Email Template & Email Delivery Platform",
   "license": "MIT",
   "author": "Nova Engineering Team",
   "type": "module",
