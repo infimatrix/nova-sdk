@@ -29,6 +29,7 @@ scripts/sync_openapi.py ──▶ openapi/nova-api.yaml  (committed snapshot, th
 - [Deploying to Artifact Registry (step by step)](deploy-artifact-registry.md)
 - [Distribution via Google Cloud Artifact Registry](distribution.md)
 - [Releasing](releasing.md)
+- [Verification plan](verification-plan.md) and [verification report](verification-report.md)
 - [Updating the OpenAPI contract](openapi-sync.md)
 - [Adding a new language](adding-a-language.md)
 

@@ -44,6 +44,13 @@
 
 Coverage is measured by `scripts/check_sdk_coverage.py`.
 
+## Verification
+
+How each behaviour is checked, and what is *not* checked, is in [verification-plan.md](verification-plan.md) and
+[verification-report.md](verification-report.md). In short: per-SDK unit and property tests, a contract-alignment test,
+a cross-language conformance suite against a real local HTTP server, and (on demand) mutation testing. None of these
+exercises the live Nova backend.
+
 ## Known limitations
 
 - No automatic JWT refresh (explicit `refresh` call).
