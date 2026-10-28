@@ -41,7 +41,7 @@ for g in gen_python_models gen_python_async gen_ts_types gen_java_models; do
   run "generated code up to date: $g" "$src" "$py" "scripts/$g.py" --check
 done
 run "SDK coverage of the contract (strict)"        "$src" "$py" scripts/check_sdk_coverage.py --strict
-if command -v actionlint >/dev/null; then run "actionlint" "$src" actionlint; else skip "actionlint" "not installed"; fi
+if command -v actionlint >/dev/null; then run "actionlint" "$src" sh -c "actionlint .github/workflows/*.yml"; else skip "actionlint" "not installed"; fi
 run "workflow YAML parses"                         "$src" "$py" -c "import glob,yaml;[yaml.safe_load(open(f)) for f in glob.glob('.github/**/*.yml',recursive=True)]"
 
 # ---------------------------------------------------------------- Python SDK
@@ -57,7 +57,9 @@ run "python: wheel installs in a clean venv"       "$work" "$work/py-clean/bin/p
 run "python: import smoke test (outside source)"   "$work" "$work/py-clean/bin/python" -I -c "import nova_sdk, nova_sdk.aio; from nova_sdk import NovaClient; NovaClient(api_key='k'); print(nova_sdk.__version__)"
 python3 -m venv "$work/py-clean-sdist"
 run "python: sdist installs in a clean venv"       "$work" "$work/py-clean-sdist/bin/pip" install -q "$work"/py-dist/*.tar.gz
-run "python: pip-audit (runtime dependencies)"     "$work" sh -c "'$work/venv/bin/pip-audit' --path \"\$(echo '$work'/py-clean/lib/python3*/site-packages)\""
+# Audit the SDK's real runtime dependency set (pip/setuptools of the throw-away venv are tooling, not shipped).
+"$work/py-clean/bin/pip" freeze 2>/dev/null | grep -viE '^(pip|setuptools|wheel|infimatrix-nova-sdk)( |=|@)' > "$work/runtime-requirements.txt"
+run "python: pip-audit (runtime dependencies)"     "$work" "$work/venv/bin/pip-audit" -r "$work/runtime-requirements.txt" --no-deps --disable-pip
 run "python: bandit (medium+)"                     "$src" "$work/venv/bin/bandit" -q -r sdks/python/src scripts tests/conformance/conformance.py -ll
 
 # ---------------------------------------------------------------- TypeScript SDK
