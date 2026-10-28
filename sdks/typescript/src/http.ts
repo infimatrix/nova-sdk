@@ -4,11 +4,13 @@ import {
   type NovaConfig,
 } from "./config.js";
 import {
+  NovaAPIError,
   NovaAbortError,
   NovaConnectionError,
   NovaError,
   NovaRedirectError,
   NovaTimeoutError,
+  NovaValidationError,
   mapApiError,
 } from "./errors.js";
 import type { ApiResponse, EnvelopeMeta } from "./models.js";
@@ -63,6 +65,19 @@ export class HttpTransport {
     let path = pathPart.replace(/^\/+/, "");
     if (path === "api/v1") path = "";
     else if (path.startsWith("api/v1/")) path = path.slice("api/v1/".length).replace(/^\/+/, "");
+
+    // An id of "." or ".." would be normalised away by fetch/intermediaries and address another endpoint.
+    for (const segment of path.split("/")) {
+      let decoded = segment;
+      try {
+        decoded = decodeURIComponent(segment);
+      } catch {
+        // malformed escape: leave as is, it cannot be a dot-segment
+      }
+      if (decoded === "." || decoded === "..") {
+        throw new NovaValidationError("Path identifiers must not be '.' or '..'.");
+      }
+    }
 
     if (path && !path.endsWith("/")) {
       const last = path.split("/").pop() ?? "";
@@ -241,6 +256,14 @@ export class HttpTransport {
     try {
       payload = JSON.parse(text);
     } catch {
+      if (contentType.toLowerCase().includes("json")) {
+        // The server declared JSON but sent something else: never report that as success.
+        throw new NovaAPIError(`Invalid JSON in HTTP ${response.status} response.`, {
+          statusCode: response.status,
+          errorCode: "INVALID_RESPONSE",
+          correlationId,
+        });
+      }
       return { data: text as T, success: true, message: "Raw response received.", meta };
     }
 

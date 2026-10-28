@@ -19,6 +19,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the proje
 - `LICENSE` file, `CHANGELOG.md`, single-sourced version (`nova_sdk/_version.py`).
 
 ### Fixed
+- Path identifiers `.` and `..` are rejected with `NovaValidationError` instead of being normalised away by the HTTP
+  stack (which turned `templates.get("..")` into a request for `/api/v1/`). Found by the cross-language conformance suite.
+- A 2xx response that declares a JSON content type but carries an invalid body now raises `NovaAPIError`
+  (`error_code="INVALID_RESPONSE"`) instead of returning the raw text as if the call had succeeded. Non-JSON content
+  types (CSV, downloads, proxies) are unchanged.
 - Public return types of `tenants.list_members`, `contacts.list_groups`, `campaigns.list`, `auth.list_api_keys` and
   `audit.list` now name their model types instead of `dict`.
 - The async resources use an async-typed base class, so `mypy` passes cleanly on the whole package.

@@ -308,3 +308,32 @@ describe("real network behaviour (local server)", () => {
     expect(lastRequest?.body).toContain('name="folder"');
   });
 });
+
+describe("conformance regressions", () => {
+  it.each([".", ".."])("rejects the dot-segment path id %s before any request", async (id) => {
+    const { client, calls } = mockClient(() => envelope({ id: "x" }));
+    await expect(client.templates.get(id)).rejects.toBeInstanceOf(NovaValidationError);
+    await expect(client.templates.delete(id)).rejects.toBeInstanceOf(NovaValidationError);
+    expect(calls).toHaveLength(0);
+  });
+
+  it("sends a literal %2e%2e id encoded, so it round-trips as data", async () => {
+    const { client, calls } = mockClient(() => envelope({ id: "x" }));
+    await client.templates.get("%2e%2e");
+    expect(new URL(calls[0]!.url).pathname).toBe("/api/v1/templates/%252e%252e/");
+  });
+
+  it("treats a JSON-declared response with an invalid body as an error, not success", async () => {
+    const { client } = mockClient(
+      () => new Response("{not json", { status: 200, headers: { "Content-Type": "application/json", "X-Correlation-ID": "c-1" } }),
+    );
+    const err = await client.templates.get("t-1").catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(NovaAPIError);
+    expect(err).toMatchObject({ statusCode: 200, errorCode: "INVALID_RESPONSE", correlationId: "c-1" });
+  });
+
+  it("still returns non-JSON content types as text", async () => {
+    const { client } = mockClient(() => new Response("plain text", { status: 200, headers: { "Content-Type": "text/plain" } }));
+    expect((await client.http.request("GET", "files/x.txt")).data).toBe("plain text");
+  });
+});

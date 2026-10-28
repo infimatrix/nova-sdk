@@ -9,12 +9,13 @@ import re
 import time
 from collections.abc import Mapping
 from typing import Any
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import unquote, urlsplit, urlunsplit
 
 import httpx
 
 from nova_sdk.config import NovaConfig
 from nova_sdk.exceptions import (
+    NovaAPIError,
     NovaConnectionError,
     NovaError,
     NovaRedirectError,
@@ -114,6 +115,14 @@ class TransportCore:
             path = ""
         elif path.startswith("api/v1/"):
             path = path[len("api/v1/") :].lstrip("/")
+
+        # An id of "." or ".." would be normalised away by HTTP clients and intermediaries,
+        # silently addressing a different endpoint (e.g. templates/../ -> /api/v1/).
+        for segment in path.split("/"):
+            if unquote(segment) in (".", ".."):
+                raise NovaValidationError(
+                    "Path identifiers must not be '.' or '..'.",
+                )
 
         # Decide whether to append trailing slash to path
         if path:
@@ -217,6 +226,14 @@ class TransportCore:
         try:
             payload = response.json()
         except Exception:
+            if "json" in content_type.lower():
+                # The server declared JSON but sent something else: never report that as success.
+                raise NovaAPIError(
+                    f"Invalid JSON in HTTP {response.status_code} response.",
+                    status_code=response.status_code,
+                    error_code="INVALID_RESPONSE",
+                    correlation_id=correlation_id,
+                ) from None
             # Non-JSON or binary response
             return ApiResponse(
                 data=response.text,

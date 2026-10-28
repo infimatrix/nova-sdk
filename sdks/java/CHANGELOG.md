@@ -17,3 +17,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the proje
 - Typed unchecked exceptions, bounded retries for idempotent requests only, `Retry-After` support, timeouts,
   redirect protection and secret redaction.
 - Contract test that exercises every operation and validates each request against the OpenAPI document.
+
+### Fixed
+- Path identifiers `.` and `..` are rejected with `NovaClientValidationException` instead of being sent as a raw dot-segment
+  that servers and proxies normalise away (so `templates().get("..")` addressed `/api/v1/`). Found by the cross-language conformance suite.
+- A 2xx response that declares a JSON content type but carries an invalid body now raises `NovaApiException`
+  (`errorCode()` `INVALID_RESPONSE`) instead of returning the raw text as if the call had succeeded. Non-JSON content
+  types (CSV, downloads, proxies) are unchanged.
+

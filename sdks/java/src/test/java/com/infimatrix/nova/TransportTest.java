@@ -327,6 +327,38 @@ class TransportTest {
         }
     }
 
+    @ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {".", "..", " .. "})
+    void dotSegmentIdentifiersAreRejectedBeforeAnyRequest(String id) {
+        try (MockServer server = new MockServer()) {
+            NovaClient client = server.clientBuilder().build();
+            assertThrows(NovaClientValidationException.class, () -> client.templates().get(id));
+            assertThrows(NovaClientValidationException.class, () -> client.templates().delete(id));
+            assertEquals(0, server.requests().size());
+        }
+    }
+
+    @Test
+    void declaredJsonWithInvalidBodyIsAnErrorNotSuccess() {
+        try (MockServer server = new MockServer()) {
+            server.reply(new Reply(200, "application/json", "{not json", Map.of("X-Correlation-ID", "c-1"), 0));
+            NovaApiException e = assertThrows(NovaApiException.class,
+                    () -> server.clientBuilder().build().templates().get("t-1"));
+            assertEquals(200, e.statusCode());
+            assertEquals("INVALID_RESPONSE", e.errorCode());
+            assertEquals("c-1", e.correlationId());
+        }
+    }
+
+    @Test
+    void nonJsonContentTypeIsStillReturnedAsText() {
+        try (MockServer server = new MockServer()) {
+            server.reply(new Reply(200, "text/plain", "plain text", Map.of(), 0));
+            ApiResult result = server.clientBuilder().build().transport().send(ApiRequest.of(HttpMethod.GET, "files/x.txt"));
+            assertEquals("plain text", result.data().asText());
+        }
+    }
+
     @Test
     void queryParametersAreEncodedAndRepeated() {
         try (MockServer server = new MockServer()) {

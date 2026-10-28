@@ -8,6 +8,7 @@ from helpers import json_response
 
 from nova_sdk import NovaClient
 from nova_sdk.exceptions import (
+    NovaAPIError,
     NovaNotFoundError,
     NovaRedirectError,
     NovaServerError,
@@ -340,3 +341,60 @@ def test_request_raw_method(mock_client_factory):
     assert raw_resp.status_code == 200
     assert raw_resp.content == b"binary-payload-stream"
     assert raw_resp.headers["Content-Type"] == "application/octet-stream"
+
+
+@pytest.mark.parametrize("bad_id", [".", ".."])
+def test_dot_segment_identifiers_are_rejected_before_any_request(
+    mock_client_factory, bad_id: str
+):
+    # docs/conventions.md: "a hostile id cannot add path segments"; "." / ".." are normalised away by HTTP stacks.
+    seen: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request.url.raw_path.decode())
+        return json_response(data={"id": "x"})
+
+    client = mock_client_factory(handler)
+    with pytest.raises(NovaValidationError):
+        client.templates.get(bad_id)
+    with pytest.raises(NovaValidationError):
+        client.templates.delete(bad_id)
+    assert seen == []
+
+
+def test_percent_escaped_dots_in_an_id_are_data_and_sent_encoded(mock_client_factory):
+    # "%2e%2e" typed by a caller is the literal 6-character id, so it is encoded again (%252e%252e) and round-trips.
+    seen: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request.url.raw_path.decode())
+        return json_response(data={"id": "x"})
+
+    mock_client_factory(handler).templates.get("%2e%2e")
+    assert seen == ["/api/v1/templates/%252e%252e/"]
+
+
+def test_declared_json_with_invalid_body_is_an_error_not_success(mock_client_factory):
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            content=b"{not json",
+            headers={"Content-Type": "application/json", "X-Correlation-ID": "c-1"},
+        )
+
+    client = mock_client_factory(handler)
+    with pytest.raises(NovaAPIError) as info:
+        client.templates.get("t-1")
+    assert info.value.status_code == 200
+    assert info.value.error_code == "INVALID_RESPONSE"
+    assert info.value.correlation_id == "c-1"
+
+
+def test_non_json_content_type_still_returned_as_text(mock_client_factory):
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200, content=b"plain text", headers={"Content-Type": "text/plain"}
+        )
+
+    client = mock_client_factory(handler)
+    assert client.transport.request("GET", "files/x.txt").data == "plain text"

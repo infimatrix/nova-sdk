@@ -207,7 +207,12 @@ public final class HttpTransport {
         if (value == null || value.isBlank()) {
             throw new NovaClientValidationException("path identifiers must be non-empty strings.");
         }
-        byte[] bytes = value.strip().getBytes(StandardCharsets.UTF_8);
+        String stripped = value.strip();
+        if (stripped.equals(".") || stripped.equals("..")) {
+            // Dot-segments are normalised away by servers and intermediaries and would address another endpoint.
+            throw new NovaClientValidationException("path identifiers must not be '.' or '..'.");
+        }
+        byte[] bytes = stripped.getBytes(StandardCharsets.UTF_8);
         StringBuilder out = new StringBuilder();
         for (byte b : bytes) {
             int c = b & 0xff;
@@ -420,6 +425,12 @@ public final class HttpTransport {
         try {
             payload = mapper.readTree(text);
         } catch (JsonProcessingException e) {
+            if (contentType.toLowerCase(java.util.Locale.ROOT).contains("json")) {
+                // The server declared JSON but sent something else: never report that as success.
+                throw new com.infimatrix.nova.errors.NovaApiException(
+                        "Invalid JSON in HTTP " + raw.status() + " response.", raw.status(), "INVALID_RESPONSE", null,
+                        correlationId);
+            }
             return new ApiResult(TextNode.valueOf(text), true, "Raw response received.", meta);
         }
         if (payload != null && payload.isObject() && payload.has("success") && payload.has("data")) {

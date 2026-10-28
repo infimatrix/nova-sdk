@@ -15,3 +15,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the proje
 - Typed errors, bounded retries for idempotent requests only, `Retry-After` support, timeouts,
   `AbortSignal` cancellation, correlation IDs, redirect protection and secret redaction.
 - ESM + CommonJS builds with bundled type declarations.
+
+### Fixed
+- Path identifiers `.` and `..` are rejected with `NovaValidationError` instead of being normalised away by the HTTP
+  stack (which turned `templates.get("..")` into a request for `/api/v1/`). Found by the cross-language conformance suite.
+- A 2xx response that declares a JSON content type but carries an invalid body now raises `NovaAPIError`
+  (`errorCode: "INVALID_RESPONSE"`) instead of returning the raw text as if the call had succeeded. Non-JSON content
+  types (CSV, downloads, proxies) are unchanged.
+
