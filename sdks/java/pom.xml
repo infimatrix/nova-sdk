@@ -40,6 +40,7 @@
     <project.build.outputTimestamp>2026-01-01T00:00:00Z</project.build.outputTimestamp>
     <jackson.version>2.22.4</jackson.version>
     <junit.version>5.14.4</junit.version>
+    <jqwik.version>1.10.2</jqwik.version>
     <jacoco.minimum.line>0.85</jacoco.minimum.line>
   </properties>
 
@@ -55,6 +56,13 @@
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
       <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- Property-based tests (test scope only; never shipped). EPL-2.0. -->
+    <dependency>
+      <groupId>net.jqwik</groupId>
+      <artifactId>jqwik</artifactId>
+      <version>${jqwik.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -216,4 +224,52 @@
       </plugin>
     </plugins>
   </build>
+  <profiles>
+    <!-- Mutation testing of the handwritten transport code: mvn -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage -->
+    <profile>
+      <id>mutation</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.pitest</groupId>
+            <artifactId>pitest-maven</artifactId>
+            <version>1.30.1</version>
+            <dependencies>
+              <dependency>
+                <groupId>org.pitest</groupId>
+                <artifactId>pitest-junit5-plugin</artifactId>
+                <version>1.2.3</version>
+              </dependency>
+            </dependencies>
+            <configuration>
+              <targetClasses>
+                <param>com.infimatrix.nova.http.*</param>
+                <param>com.infimatrix.nova.NovaConfig</param>
+                <param>com.infimatrix.nova.Page*</param>
+                <param>com.infimatrix.nova.Query*</param>
+                <param>com.infimatrix.nova.errors.*</param>
+                <param>com.infimatrix.nova.resources.Validate</param>
+              </targetClasses>
+              <targetTests>
+                <param>com.infimatrix.nova.*</param>
+              </targetTests>
+              <excludedTestClasses>
+                <param>com.infimatrix.nova.ContractTest</param>
+              </excludedTestClasses>
+              <threads>4</threads>
+              <timestampedReports>false</timestampedReports>
+              <outputFormats>
+                <param>XML</param>
+                <param>HTML</param>
+              </outputFormats>
+              <jvmArgs>
+                <jvmArg>-Dproject.version=${project.version}</jvmArg>
+                <jvmArg>-Dnova.repo.root=${project.basedir}/../..</jvmArg>
+              </jvmArgs>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

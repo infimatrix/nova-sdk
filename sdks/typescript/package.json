@@ -1,7 +1,7 @@
 {
   "name": "@infimatrix/nova-sdk",
   "version": "0.1.0",
-  "description": "Official TypeScript/JavaScript SDK for Nova \u2014 Dynamic Email Template & Email Delivery Platform",
+  "description": "Official TypeScript/JavaScript SDK for Nova — Dynamic Email Template & Email Delivery Platform",
   "license": "MIT",
   "author": "Nova Engineering Team",
   "type": "module",
@@ -58,6 +58,7 @@
   "devDependencies": {
     "@types/node": "^20.19.43",
     "@vitest/coverage-v8": "^4.1.12",
+    "fast-check": "3.23.2",
     "tsup": "^8.5.1",
     "typescript": "5.9",
     "vitest": "^4.1.12"
