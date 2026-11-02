@@ -50,10 +50,10 @@ scripts/sync_openapi.py ──▶ openapi/nova-api.yaml  (committed snapshot, th
 
 | Check | Where | Fails when |
 |---|---|---|
-| `pytest` (`tests/contract/`) | `contract.yml` | the snapshot is invalid OpenAPI, or violates envelope/auth/tenant/pagination rules |
+| `pytest` (`tests/contract/`) | `ci.yml` | the snapshot is invalid OpenAPI, or violates envelope/auth/tenant/pagination rules |
 | `scripts/sync_openapi.py SOURCE --check` | manual / backend-triggered | the snapshot differs from the backend's current artifact |
-| `scripts/check_sdk_coverage.py --strict` | `contract.yml`, SDK workflows | an SDK is missing a contract operation or calls one that does not exist |
-| `scripts/gen_python_models.py --check`, `gen_python_async.py --check`, `gen_ts_types.py --check`, `gen_java_models.py --check` | `contract.yml`, SDK workflows | generated code is stale |
+| `scripts/check_sdk_coverage.py --strict` | `ci.yml` | an SDK is missing a contract operation or calls one that does not exist |
+| `scripts/gen_python_models.py --check`, `gen_python_async.py --check`, `gen_ts_types.py --check`, `gen_java_models.py --check` | `ci.yml` | generated code is stale |
 
 Checks that need a running backend (every route documented, real responses validated against the schemas) live in the
 backend repository's `tests/contract/`.

@@ -7,7 +7,7 @@ import { spawnSync } from "node:child_process";
 const scope = "@infimatrix";
 
 // Inside an npm lifecycle script the effective settings are exported as env vars; when the
-// guard is run directly (as the release workflow does) ask npm for them.
+// guard is run directly (for example from a manual publish) ask npm for them.
 function npmConfig(key) {
   const result = spawnSync("npm", ["config", "get", key], { encoding: "utf8" });
   const value = result.status === 0 ? result.stdout.trim() : "";

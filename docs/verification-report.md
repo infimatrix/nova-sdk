@@ -217,8 +217,8 @@ Limits: mutation tools only create the mutants they know; they cannot find a mis
 | Python runtime dependencies | pip-audit on the 7 pinned runtime packages (httpx, httpcore, h11, anyio, idna, certifi, typing_extensions) | PASS, no known vulnerabilities. (An earlier harness version audited the throw-away venv and flagged `pip` itself; that was a harness error, not an SDK dependency.) |
 | npm | `npm audit --omit=dev --audit-level=low` (the package has no runtime dependencies) and `npm audit --audit-level=high` for dev tooling | PASS, 0 vulnerabilities |
 | Java dependencies | runtime: `jackson-databind` only | NOT RUN: no Java vulnerability database scan was run locally; CI uses GitHub dependency review on pull requests |
-| CodeQL (python, javascript-typescript, java-kotlin) | `security.yml` | NOT RUN locally (runs in GitHub only) |
-| Workflows | actionlint + yamllint, all actions pinned to commit SHAs, `permissions: contents: read` by default, no secrets or publish in ordinary CI (enforced by `test_release_safeguards.py`, which now also covers `conformance.yml` and `security.yml`) | PASS |
+| CodeQL (python, javascript-typescript, java-kotlin) | `ci.yml` | NOT RUN locally (runs in GitHub only) |
+| Workflows | actionlint + yamllint, all actions pinned to commit SHAs, `permissions: contents: read` by default, no secrets or publish in ordinary CI (enforced by `test_release_safeguards.py`; since the final change the repository has the single workflow `ci.yml`: gitleaks, CodeQL, tests) | PASS |
 
 Licences (`LICENSE` is byte-identical in the root and the three SDK directories; `pyproject.toml`, `package.json` and
 `pom.xml` declare MIT):

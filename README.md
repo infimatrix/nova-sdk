@@ -43,8 +43,7 @@ are configured by this repository.
 | Install and use the Java SDK | [docs/using-java.md](docs/using-java.md) |
 | Understand the safeguards and release process | [docs/distribution.md](docs/distribution.md), [docs/releasing.md](docs/releasing.md) |
 
-Release workflows exist for Python (`python-v*` tags) and TypeScript (`typescript-v*` tags). Java is published manually
-until a workflow is added.
+CI is a single workflow (`.github/workflows/ci.yml`: gitleaks, CodeQL, tests). Publishing is manual for all three SDKs.
 
 ## License
 

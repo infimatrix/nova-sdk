@@ -1,7 +1,7 @@
 # Adding a new language SDK
 
 Use this process for Kotlin/Android, Go or anything else (`sdks/java` is a worked example: generator
-`scripts/gen_java_models.py`, coverage scanner entry in `scripts/check_sdk_coverage.py`, CI in `sdk-java.yml`). A language is "supported" only when every step
+`scripts/gen_java_models.py`, coverage scanner entry in `scripts/check_sdk_coverage.py`, CI job in `ci.yml`). A language is "supported" only when every step
 below is done; until then it must not appear as supported in READMEs or package metadata.
 
 1. **Start from the contract.** Read [conventions](conventions.md). Never hand-write request/response shapes that
@@ -21,10 +21,9 @@ below is done; until then it must not appear as supported in READMEs or package 
    (see `SDKS`, `CALL_RE`, `LIST_RE`) so `check_sdk_coverage.py --strict` measures it.
 6. **Tests.** Mocked-HTTP unit tests for every resource, retry/timeout/redirect/error mapping tests, a test against
    a real local HTTP server, and a packaging test that installs the built artifact in a clean project.
-7. **CI.** Add `.github/workflows/sdk-<language>.yml` (lint/test matrix over supported runtimes, generated-code
-   reproducibility, strict coverage, artifact verification, dependency audit) and a gated
-   `release-<language>.yml` that publishes only to the matching Artifact Registry format (Maven for Java/Kotlin,
-   Go for Go; see [distribution](distribution.md)) through the `artifact-registry` environment and Workload Identity Federation.
+7. **CI.** Add a `<language>` job to `.github/workflows/ci.yml` (test matrix over supported runtimes) and the language to
+   the CodeQL matrix and the generated-code/coverage steps of the `contract` job. Publishing stays manual
+   (see [distribution](distribution.md)).
 8. **Docs.** Add the language to the tables in [README.md](README.md), [versioning.md](versioning.md) and the
    root README, and document runtime support and known differences.
 9. **Review checklist:** `check_sdk_coverage.py --strict` is 100%, the compatibility matrix is updated,

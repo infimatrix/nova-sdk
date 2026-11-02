@@ -44,59 +44,15 @@ done
 
 Verify: `gcloud artifacts repositories list --location=<LOCATION>`.
 
-## 2. Python and TypeScript: GitHub Actions release
+## 2. Python and TypeScript
 
-The workflows [release-python.yml](../.github/workflows/release-python.yml) and
-[release-typescript.yml](../.github/workflows/release-typescript.yml) build, verify and publish with short-lived
-credentials from Workload Identity Federation (WIF). No key is stored.
+This repository has a single CI workflow ([ci.yml](../.github/workflows/ci.yml): gitleaks, CodeQL and tests). It has no
+release or publish step and holds no cloud credentials, so publishing is done by a person from a trusted workstation.
 
-**a. Workload Identity Federation** (restrict it to this repository):
+**Publish from a trusted workstation**
 
-```bash
-gcloud iam workload-identity-pools create github --location=global
-gcloud iam workload-identity-pools providers create-oidc github-oidc \
-  --location=global --workload-identity-pool=github \
-  --issuer-uri="https://token.actions.githubusercontent.com" \
-  --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository" \
-  --attribute-condition="assertion.repository=='infimatrix/nova-sdk'"
-
-gcloud iam service-accounts add-iam-policy-binding \
-  nova-sdk-publisher@<PROJECT>.iam.gserviceaccount.com \
-  --role=roles/iam.workloadIdentityUser \
-  --member="principalSet://iam.googleapis.com/projects/<PROJECT_NUMBER>/locations/global/workloadIdentityPools/github/attribute.repository/infimatrix/nova-sdk"
-```
-
-**b. GitHub environment** `artifact-registry` (Settings → Environments): add **Required reviewers** and limit
-deployment tags to `python-v*` and `typescript-v*`. Add these **variables** (not secrets):
-
-| Variable | Value |
-|---|---|
-| `GCP_PROJECT_ID` | `<PROJECT>` |
-| `AR_LOCATION` | `<LOCATION>` |
-| `AR_PYTHON_REPOSITORY` | `nova-python` |
-| `AR_NPM_REPOSITORY` | `nova-npm` |
-| `GCP_WORKLOAD_IDENTITY_PROVIDER` | `projects/<PROJECT_NUMBER>/locations/global/workloadIdentityPools/github/providers/github-oidc` |
-| `GCP_SERVICE_ACCOUNT` | `nova-sdk-publisher@<PROJECT>.iam.gserviceaccount.com` |
-
-**c. Release**
-
-1. Bump the version (`sdks/python/src/nova_sdk/_version.py`; or `sdks/typescript/package.json` **and**
-   `src/version.ts`) and the SDK `CHANGELOG.md`; merge to `main`.
-2. `git tag python-v0.2.0 && git push origin python-v0.2.0` (or `typescript-v0.1.0`). The tag must equal the package
-   version or the build job fails.
-3. Approve the `artifact-registry` environment when the workflow pauses.
-
-Rehearse without publishing: Actions → *Run workflow* with `publish` unchecked.
-
-**d. Verify**
-
-```bash
-gcloud artifacts packages list --repository=nova-python --location=<LOCATION>
-gcloud artifacts versions list --package=infimatrix-nova-sdk --repository=nova-python --location=<LOCATION>
-gcloud artifacts packages list --repository=nova-npm --location=<LOCATION>
-```
-
-### Manual publish (fallback, from a trusted workstation)
+Bump the version (`sdks/python/src/nova_sdk/_version.py`; or `sdks/typescript/package.json` **and** `src/version.ts`) and the
+SDK `CHANGELOG.md`, merge to `main`, then:
 
 ```bash
 gcloud auth login   # an identity with Artifact Registry Writer
@@ -112,7 +68,7 @@ cd sdks/typescript && npm ci && npm run build && npx google-artifactregistry-aut
 
 ## 3. Java (Maven)
 
-The Java SDK has no release workflow and its [pom.xml](../sdks/java/pom.xml) has no `distributionManagement`, so
+No SDK has a release workflow, and the Java [pom.xml](../sdks/java/pom.xml) has no `distributionManagement`, so
 nothing can be deployed accidentally. To publish a release manually:
 
 1. Add the target to your **own** `~/.m2/settings.xml` (or pass it on the command line); do not commit credentials:
