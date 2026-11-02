@@ -1,4 +1,5 @@
 // Conformance driver for the TypeScript SDK: performs one abstract call and prints a normalised outcome.
+import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -63,7 +64,7 @@ try {
       break;
     }
     case "templates.render": { const r = await nova.templates.render(call.id, call.variables ?? {}, ro); data = { subject: r.subject, html_content: r.html_content }; break; }
-    case "webhooks.create": { const w = await nova.webhooks.create({ name: call.name, url: call.url }, ro); data = { id: w.id, secret: w.secret, secret_masked: w.secret_masked }; break; }
+    case "webhooks.create": { const w = await nova.webhooks.create({ name: call.name, url: call.url }, ro); data = { id: w.id, secret_sha256: createHash("sha256").update(w.secret).digest("hex"), secret_masked: w.secret_masked }; break; }
     default: throw new Error("unknown op " + call.op);
   }
   console.log(JSON.stringify({ kind: "ok", data }));
