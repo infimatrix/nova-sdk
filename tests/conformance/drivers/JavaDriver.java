@@ -75,6 +75,27 @@ public final class JavaDriver {
                     for (Template t : page) ids.add(t.id());
                     data = java.util.Map.of("ids", ids);
                 }
+                case "tenants.list_members" -> {
+                    List<String> ids = new ArrayList<>();
+                    for (var m : nova.tenants().memberships().list(null, Query.empty()).items()) ids.add(M.valueToTree(m).path("id").asText());
+                    data = java.util.Map.of("ids", ids);
+                }
+                case "tenants.delete" -> nova.tenants().delete(null);
+                case "tenants.iter_all" -> {
+                    Page<com.infimatrix.nova.models.Tenant> page = nova.tenants().list(Query.builder().pageSize(call.get("page_size").asInt()).build());
+                    List<String> ids = new ArrayList<>();
+                    for (var t : page) ids.add(M.valueToTree(t).path("id").asText());
+                    data = java.util.Map.of("ids", ids);
+                }
+                case "templates.render" -> {
+                    java.util.Map<String, Object> vars = call.has("variables") ? M.convertValue(call.get("variables"), java.util.Map.class) : java.util.Map.of();
+                    var r = nova.templates().render(call.get("id").asText(), vars);
+                    data = java.util.Map.of("subject", r.subject(), "html_content", r.htmlContent());
+                }
+                case "webhooks.create" -> {
+                    var w = nova.webhooks().create(com.infimatrix.nova.models.WebhookEndpointCreateUpdateRequest.builder().name(call.get("name").asText()).url(call.get("url").asText()).build());
+                    data = java.util.Map.of("id", w.id(), "secret", w.secret(), "secret_masked", w.secretMasked());
+                }
                 default -> throw new IllegalArgumentException("unknown op " + op);
             }
             out.put("kind", "ok");

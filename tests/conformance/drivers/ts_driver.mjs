@@ -53,6 +53,17 @@ try {
       data = { ids };
       break;
     }
+    case "tenants.list_members": { const page = await nova.tenants.listMembers(undefined, {}, ro); data = { ids: page.items.map((m) => m.id) }; break; }
+    case "tenants.delete": await nova.tenants.delete(undefined, ro); data = null; break;
+    case "tenants.iter_all": {
+      const page = await nova.tenants.list({ page_size: call.page_size });
+      const ids = [];
+      for await (const t of page) ids.push(t.id);
+      data = { ids };
+      break;
+    }
+    case "templates.render": { const r = await nova.templates.render(call.id, call.variables ?? {}, ro); data = { subject: r.subject, html_content: r.html_content }; break; }
+    case "webhooks.create": { const w = await nova.webhooks.create({ name: call.name, url: call.url }, ro); data = { id: w.id, secret: w.secret, secret_masked: w.secret_masked }; break; }
     default: throw new Error("unknown op " + call.op);
   }
   console.log(JSON.stringify({ kind: "ok", data }));
