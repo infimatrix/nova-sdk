@@ -16,12 +16,6 @@ import java.util.TreeSet;
 public final class JavaDriver {
     static final ObjectMapper M = new ObjectMapper();
 
-    static String sha256(String value) throws Exception {
-        byte[] d = java.security.MessageDigest.getInstance("SHA-256")
-                .digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-        return java.util.HexFormat.of().formatHex(d);
-    }
-
     static String categorise(Throwable e) {
         if (e instanceof NovaRedirectException) return "Redirect";
         if (e instanceof NovaRateLimitException) return "RateLimit";
@@ -100,7 +94,7 @@ public final class JavaDriver {
                 }
                 case "webhooks.create" -> {
                     var w = nova.webhooks().create(com.infimatrix.nova.models.WebhookEndpointCreateUpdateRequest.builder().name(call.get("name").asText()).url(call.get("url").asText()).build());
-                    data = java.util.Map.of("id", w.id(), "secret_sha256", sha256(w.secret()), "secret_masked", w.secretMasked());
+                    data = java.util.Map.of("id", w.id(), "secret_length", w.secret().length(), "secret_differs_from_masked", !w.secret().equals(w.secretMasked()), "secret_masked", w.secretMasked());
                 }
                 default -> throw new IllegalArgumentException("unknown op " + op);
             }
