@@ -1,0 +1,21 @@
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /sdks/python
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+  - package-ecosystem: npm
+    directory: /sdks/typescript
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+  - package-ecosystem: maven
+    directory: /sdks/java
+    schedule: { interval: weekly }
+    ignore:
+      # checkstyle 11+ needs Java 21; the Java SDK supports 17
+      - dependency-name: com.puppycrawl.tools:checkstyle
+        update-types: ["version-update:semver-major"]
+    open-pull-requests-limit: 5
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
