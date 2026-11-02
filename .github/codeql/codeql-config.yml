@@ -1,0 +1,6 @@
+# The conformance drivers are test harness code that print synthetic fixture values (fake keys and secrets served by a
+# local mock server) to a parent process. CodeQL reports those prints as clear-text logging of sensitive data.
+# The SDK sources themselves are still analysed.
+name: nova-sdk CodeQL
+paths-ignore:
+  - tests/conformance/drivers
