@@ -1,5 +1,6 @@
 """Conformance driver for the Python SDK: performs one abstract call and prints a normalised outcome."""
 
+import hashlib
 import json
 import sys
 
@@ -73,7 +74,7 @@ def main():
                 data = {"subject": r.subject, "html_content": r.html_content}
             elif op == "webhooks.create":
                 w = nova.webhooks.create(name=call["name"], url=call["url"])
-                data = {"id": w.id, "secret": w.secret, "secret_masked": w.secret_masked}
+                data = {"id": w.id, "secret_sha256": hashlib.sha256(w.secret.encode()).hexdigest(), "secret_masked": w.secret_masked}
             else:
                 raise SystemExit(f"unknown op {op}")
         print(json.dumps({"kind": "ok", "data": data}))
