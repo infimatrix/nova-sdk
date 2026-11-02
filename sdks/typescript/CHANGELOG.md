@@ -4,7 +4,7 @@ All notable changes to `@infimatrix/nova-sdk` are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
-## [0.1.0] - Unreleased
+## [0.2.0] - Unreleased
 
 ### Added
 - `tenants.currentTenantId()` returns the tenant the credentials resolve to (client default, otherwise `GET /auth/me/`).

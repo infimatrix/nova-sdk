@@ -8,7 +8,7 @@ Step-by-step guide to publish the Nova SDKs to [Artifact Registry](https://docs.
 |---|---|---|
 | Python | [Python](https://docs.cloud.google.com/artifact-registry/docs/python) | GitHub Actions on `python-v*` tags, or manual `twine` |
 | TypeScript | [npm](https://docs.cloud.google.com/artifact-registry/docs/nodejs) | GitHub Actions on `typescript-v*` tags, or manual `npm publish` |
-| Java | [Maven](https://docs.cloud.google.com/artifact-registry/docs/java) | **Manual `mvn deploy` only** (no workflow, no `distributionManagement` yet, see [below](#3-java-maven)) |
+| Java | [Maven](https://docs.cloud.google.com/artifact-registry/docs/java) | **Manual `mvn deploy -Partifact-registry` only** (no workflow, see [below](#3-java-maven)) |
 
 Replace `<PROJECT>`, `<LOCATION>` (e.g. `europe-west1`) and the repository names with your own. Nothing in this
 repository is created for you.
@@ -68,8 +68,10 @@ cd sdks/typescript && npm ci && npm run build && npx google-artifactregistry-aut
 
 ## 3. Java (Maven)
 
-No SDK has a release workflow, and the Java [pom.xml](../sdks/java/pom.xml) has no `distributionManagement`, so
-nothing can be deployed accidentally. To publish a release manually:
+No SDK has a release workflow. The Java [pom.xml](../sdks/java/pom.xml) skips `deploy` by default
+(`maven.deploy.skip=true`); only the opt-in `artifact-registry` profile enables it, and that profile refuses to run unless
+`ar.project`, `ar.location` and `ar.repository` are given. No project, location or repository name is stored in the pom.
+To publish a release manually:
 
 1. Add the target to your **own** `~/.m2/settings.xml` (or pass it on the command line); do not commit credentials:
 
@@ -86,14 +88,14 @@ nothing can be deployed accidentally. To publish a release manually:
    </settings>
    ```
 
-2. Run the full verification, then deploy to the repository (`-DaltDeploymentRepository` avoids editing the pom):
+2. Run the full verification, then deploy with the profile:
 
    ```bash
    export AR_ACCESS_TOKEN="$(gcloud auth print-access-token)"
    cd sdks/java
    mvn -B verify
-   mvn -B deploy -DskipTests \
-     -DaltDeploymentRepository=artifact-registry::https://<LOCATION>-maven.pkg.dev/<PROJECT>/nova-maven
+   mvn -B deploy -DskipTests -Partifact-registry \
+     -Dar.project=<PROJECT> -Dar.location=<LOCATION> -Dar.repository=nova-maven
    ```
 
    Alternative: `gcloud artifacts print-settings mvn --repository=nova-maven --location=<LOCATION>` prints a ready-made

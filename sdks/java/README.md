@@ -8,7 +8,7 @@ Official Java client for **Nova — Dynamic Email Template & Email Delivery Plat
   idempotent calls only, `Retry-After`, no redirect following, typed errors, secret redaction.
 
 > **Not published yet.** The SDK is built and tested locally only. Packages will be distributed through a private
-> Google Cloud Artifact Registry Maven repository; no release exists and none has been configured.
+> Google Cloud Artifact Registry Maven repository; no release exists. Publishing is manual through the opt-in `artifact-registry` Maven profile (see docs/deploy-artifact-registry.md).
 
 ## Build and install locally
 
@@ -22,7 +22,7 @@ mvn install                # installs into your local ~/.m2 only (not a publish)
 <dependency>
   <groupId>com.infimatrix</groupId>
   <artifactId>nova-sdk</artifactId>
-  <version>0.1.0</version>
+  <version>0.2.0</version>
 </dependency>
 ```
 

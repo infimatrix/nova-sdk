@@ -62,3 +62,42 @@ def test_package_metadata_points_to_the_sdk_repository_and_blocks_public_upload(
         pyproject["project"]["name"] == "infimatrix-nova-sdk"
         and pkg["name"] == "@infimatrix/nova-sdk"
     )
+
+
+def test_java_pom_cannot_deploy_unless_the_registry_profile_is_chosen():
+    import xml.etree.ElementTree as ET
+
+    ns = {"m": "http://maven.apache.org/POM/4.0.0"}
+    pom = ET.parse(ROOT / "sdks/java/pom.xml").getroot()
+    assert pom.find("m:distributionManagement", ns) is None
+    assert pom.find("m:properties/m:maven.deploy.skip", ns).text == "true"
+    profile = next(
+        p
+        for p in pom.findall("m:profiles/m:profile", ns)
+        if p.find("m:id", ns).text == "artifact-registry"
+    )
+    assert profile.find("m:activation", ns) is None, "must be opt-in only"
+    assert profile.find("m:properties/m:maven.deploy.skip", ns).text == "false"
+    url = profile.find("m:distributionManagement/m:repository/m:url", ns).text
+    assert url == "https://${ar.location}-maven.pkg.dev/${ar.project}/${ar.repository}"
+    text = (ROOT / "sdks/java/pom.xml").read_text()
+    for forbidden in ("repo1.maven.org", "oss.sonatype", "central.sonatype"):
+        assert forbidden not in text
+
+
+def test_all_three_sdks_declare_the_same_version():
+    import json
+    import re
+
+    py = re.search(
+        r'"([^"]+)"',
+        (ROOT / "sdks/python/src/nova_sdk/_version.py")
+        .read_text()
+        .split("__version__")[1],
+    ).group(1)
+    ts = json.loads((ROOT / "sdks/typescript/package.json").read_text())["version"]
+    java = re.search(
+        r"<artifactId>nova-sdk</artifactId>\s*<version>([^<]+)</version>",
+        (ROOT / "sdks/java/pom.xml").read_text(),
+    ).group(1)
+    assert py == ts == java

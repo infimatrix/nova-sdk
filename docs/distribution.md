@@ -7,12 +7,12 @@ public npm registry, Maven Central or any other public index. The GitHub reposit
 |---|---|---|---|
 | Python `infimatrix-nova-sdk` | Python | `https://<LOCATION>-python.pkg.dev/<PROJECT>/<REPOSITORY>/` (install via `…/simple/`) | Manual publish |
 | TypeScript `@infimatrix/nova-sdk` | npm | `https://<LOCATION>-npm.pkg.dev/<PROJECT>/<REPOSITORY>/` | Manual publish |
-| Java `com.infimatrix:nova-sdk` | Maven | `https://<LOCATION>-maven.pkg.dev/<PROJECT>/<REPOSITORY>` | SDK implemented; **no `distributionManagement` yet; manual publish** |
+| Java `com.infimatrix:nova-sdk` | Maven | `https://<LOCATION>-maven.pkg.dev/<PROJECT>/<REPOSITORY>` | SDK implemented; manual publish through the opt-in `artifact-registry` Maven profile |
 | Kotlin/Android | Maven | same format | SDK not implemented |
 | Go | Go | `https://<LOCATION>-go.pkg.dev/<PROJECT>/<REPOSITORY>` | SDK not implemented |
 
 Supported formats: <https://docs.cloud.google.com/artifact-registry/docs/supported-formats>.
-No SDK has a release workflow. Java: its `pom.xml` has no `distributionManagement` and `mvn deploy` is not configured. Publishing it to Artifact Registry Maven (and the Kotlin and Go rows) is future work.
+No SDK has a release workflow. Java: `mvn deploy` is skipped unless the `artifact-registry` profile is chosen. Publishing it to Artifact Registry Maven (and the Kotlin and Go rows) is future work.
 
 ## Nothing is hard-coded
 
