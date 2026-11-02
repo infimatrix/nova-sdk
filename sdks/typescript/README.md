@@ -6,10 +6,10 @@ Typed, promise-based, zero runtime dependencies. Works with Node.js 18.17+ using
 ```ts
 import { NovaClient } from "@infimatrix/nova-sdk";
 
+// A server address and an API key are all you need (or set NOVA_BASE_URL and NOVA_API_KEY).
 const nova = new NovaClient({
-  baseUrl: "https://api.example.com",
+  baseUrl: "https://nova.example.test", // your Nova server
   apiKey: process.env.NOVA_API_KEY,
-  tenantId: "00000000-0000-0000-0000-000000000001",
 });
 
 const email = await nova.emails.send({
@@ -57,7 +57,7 @@ in a trusted browser context (for example an internal tool behind SSO) you can o
 | `baseUrl` | `http://localhost:8000` (env `NOVA_BASE_URL`) | API origin. A trailing `/api/v1` is accepted and stripped. |
 | `apiKey` | env `NOVA_API_KEY` | `nova_key_…`; takes precedence over `accessToken`. |
 | `accessToken` | env `NOVA_ACCESS_TOKEN` | JWT access token. |
-| `tenantId` | env `NOVA_TENANT_ID` | Default tenant sent as `X-Tenant-ID`. |
+| `tenantId` | env `NOVA_TENANT_ID` | **Optional.** Workspace to use when you belong to several; sent as `X-Tenant-ID`. When omitted the server uses your first active workspace, and calls that need the id in the path (`nova.tenants.listMembers()`) look it up (`nova.tenants.currentTenantId()`). Tenant deletion never infers it. |
 | `timeoutMs` | `30000` | Per-attempt timeout. |
 | `maxRetries` | `3` | Retries of idempotent requests (0–10). |
 | `retryBackoffMs` | `500` | Exponential backoff base. |

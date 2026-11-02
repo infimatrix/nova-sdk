@@ -7,6 +7,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the proje
 ## [0.1.0] - Unreleased
 
 ### Added
+- `tenants().currentTenantId()` returns the tenant the credentials resolve to (client default, otherwise `GET /auth/me/`).
+- `TemplateRenderResult` (`subject()`, `htmlContent()`), and `secret()`, `secretMasked()`, `createdAt()`, `updatedAt()` on
+  `WebhookEndpointCreateUpdate`, `message()` on `Logout`. These fields were silently dropped before because the contract did
+  not declare them; the corrections are kept in `openapi/sdk-overlay.yaml` until the backend contract is fixed.
 - First version of the Java SDK for Java 17+ (JDK `java.net.http` client, Jackson for JSON).
 - `NovaClient` with an immutable, thread-safe design and API classes for auth, users, tenants and memberships,
   templates, contacts and groups, emails and logs, providers, webhooks, campaigns, analytics, audit logs and the
@@ -17,6 +21,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the proje
 - Typed unchecked exceptions, bounded retries for idempotent requests only, `Retry-After` support, timeouts,
   redirect protection and secret redaction.
 - Contract test that exercises every operation and validates each request against the OpenAPI document.
+
+### Changed
+- Workspace operations that put the tenant in the URL (`tenants().get/update`, `tenants().memberships()`) no longer require a
+  tenant id: with only a server URL and an API key the SDK asks the server which tenant the credentials belong to.
+  `tenants().delete()` still requires an explicit id. `templates().render()` now returns `TemplateRenderResult`
+  (it returned an empty `TemplateRender`).
 
 ### Fixed
 - Credentials are now fully stripped from the `Location` reported by a redirect error when the password itself contains

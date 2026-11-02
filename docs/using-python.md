@@ -36,7 +36,7 @@ than `--extra-index-url` (dependency confusion risk).
 ## 3. Use
 
 ```bash
-export NOVA_BASE_URL=https://api.example.com NOVA_API_KEY=nova_key_... NOVA_TENANT_ID=<uuid>
+export NOVA_BASE_URL=https://<your-nova-server> NOVA_API_KEY=nova_key_...
 ```
 
 ```python

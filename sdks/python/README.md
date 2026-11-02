@@ -41,10 +41,10 @@ pip install --index-url https://<LOCATION>-python.pkg.dev/<PROJECT>/<REPOSITORY>
 ```python
 from nova_sdk import NovaClient
 
+# All you need is the address of your Nova server and an API key. Nothing else.
 client = NovaClient(
-    base_url="https://api.novamail.io",
-    api_key="nova_key_your_api_key_here",
-    tenant_id="00000000-0000-0000-0000-000000000001",
+    base_url="https://nova.example.test",  # your Nova server (or set NOVA_BASE_URL)
+    api_key="nova_key_your_api_key_here",  # or set NOVA_API_KEY
 )
 
 # Check platform health
@@ -60,12 +60,17 @@ client.close()
 ```python
 from nova_sdk import NovaClient
 
-with NovaClient(api_key="nova_key_...", tenant_id="...") as client:
+with NovaClient(base_url="https://nova.example.test", api_key="nova_key_...") as client:
     health = client.health()
     print("Nova API status:", health["status"])
 ```
 
-### 3. Tenant Context Switching
+### 3. Tenant Context Switching (optional)
+
+You do not need a workspace id to get started: with only a server URL and an API key the server uses your first active
+workspace, and calls that put the workspace in the URL path (such as `client.tenants.list_members()`) look it up for you
+(`client.tenants.current_tenant_id()` returns it). Only pass a `tenant_id` to work in a different workspace. Deleting a
+workspace is the one operation that never infers the id.
 
 ```python
 with NovaClient(api_key="nova_key_...") as client:
@@ -143,7 +148,7 @@ if page.has_next:
 ```python
 from nova_sdk import NovaClient
 
-with NovaClient(base_url="https://api.novamail.io") as client:
+with NovaClient(base_url="https://nova.example.test") as client:
     # 1. Login with credentials (optional set_current_token=True)
     session = client.auth.login(
         email="user@company.com",
@@ -204,7 +209,7 @@ client.auth.change_password(
 ```python
 from nova_sdk import NovaClient, Role, TenantStatus
 
-with NovaClient(api_key="nova_key_...", base_url="https://api.novamail.io") as client:
+with NovaClient(api_key="nova_key_...", base_url="https://nova.example.test") as client:
     # 1. Create a new organization workspace
     tenant = client.tenants.create(
         name="Acme Corporation",
@@ -252,7 +257,7 @@ with NovaClient(api_key="nova_key_...", base_url="https://api.novamail.io") as c
 ```python
 from nova_sdk import NovaClient, TemplateStatus
 
-with NovaClient(api_key="nova_key_...", tenant_id="...") as client:
+with NovaClient(base_url="https://nova.example.test", api_key="nova_key_...") as client:
     # 1. Create a new email template with variable placeholders
     template = client.templates.create(
         name="Welcome Onboarding",
@@ -292,7 +297,7 @@ with NovaClient(api_key="nova_key_...", tenant_id="...") as client:
 ```python
 from nova_sdk import ContactStatus, NovaClient
 
-with NovaClient(api_key="nova_key_...", tenant_id="...") as client:
+with NovaClient(base_url="https://nova.example.test", api_key="nova_key_...") as client:
     # 1. Create a new contact subscriber
     contact = client.contacts.create(
         email="developer@company.com",
@@ -352,7 +357,7 @@ with NovaClient(api_key="nova_key_...", tenant_id="...") as client:
 ```python
 from nova_sdk import EmailMessageStatus, NovaClient
 
-with NovaClient(api_key="nova_key_...", tenant_id="...") as client:
+with NovaClient(base_url="https://nova.example.test", api_key="nova_key_...") as client:
     # 1. Dispatch a single transactional email
     email = client.emails.send(
         recipient_email="user@example.com",
@@ -418,7 +423,7 @@ Manage tenant-scoped external email delivery provider integrations (SMTP relays,
 ```python
 from nova_sdk import AuthenticationType, NovaClient, ProviderType
 
-with NovaClient(api_key="nova_key_...", tenant_id="...") as client:
+with NovaClient(base_url="https://nova.example.test", api_key="nova_key_...") as client:
     # 1. Inspect supported provider integration types
     supported_types = client.providers.types()
     for t in supported_types:
@@ -499,7 +504,7 @@ Manage tenant-scoped webhook subscriptions for real-time delivery event callback
 ```python
 from nova_sdk import NovaClient, WebhookEvent
 
-with NovaClient(api_key="nova_key_...", tenant_id="...") as client:
+with NovaClient(base_url="https://nova.example.test", api_key="nova_key_...") as client:
     # 1. Enumerate all supported webhook event choices
     available_events = client.webhooks.events()
     for ev in available_events:
@@ -563,7 +568,7 @@ Access via `client.campaigns.transactional` or convenient top-level shortcuts on
 ```python
 from nova_sdk import NovaClient
 
-with NovaClient(api_key="nova_key_...", tenant_id="...") as client:
+with NovaClient(base_url="https://nova.example.test", api_key="nova_key_...") as client:
     # 1. Create a new transactional notification mapping
     notif = client.campaigns.transactional.create(
         name="Welcome Onboarding Email",
@@ -598,8 +603,8 @@ with NovaClient(api_key="nova_key_...", tenant_id="...") as client:
         notif_id,
         recipient_email="qa.tester@example.com",
         from_name="Nova Onboarding",
-        sender_email="support@novamail.io",
-        reply_to="support@novamail.io",
+        sender_email="support@example.com",
+        reply_to="support@example.com",
     )
     print("Test email message ID:", test_result["message_id"])
 
@@ -613,7 +618,7 @@ with NovaClient(api_key="nova_key_...", tenant_id="...") as client:
 from datetime import date, timedelta
 from nova_sdk import NovaClient
 
-with NovaClient(api_key="nova_key_...", tenant_id="...") as client:
+with NovaClient(base_url="https://nova.example.test", api_key="nova_key_...") as client:
     # 1. Retrieve all-time dashboard overview metrics
     overview = client.analytics.dashboard()
     print("Total contacts:", overview["total_contacts"])
@@ -649,7 +654,7 @@ Audit access logs provide tenant-scoped observability and compliance tracking fo
 from datetime import datetime, timedelta, timezone
 from nova_sdk import AccessLogCategory, NovaClient
 
-with NovaClient(api_key="nova_key_...", tenant_id="...") as client:
+with NovaClient(base_url="https://nova.example.test", api_key="nova_key_...") as client:
     # 1. List access logs with rich filtering
     seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
     logs = client.audit.access_logs.list(
@@ -717,10 +722,10 @@ client.assets.files.delete(asset.id)
 
 | Option | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `base_url` | `str` | `"http://localhost:8000"` | Nova API base URL (env: `NOVA_BASE_URL`) |
+| `base_url` | `str` | `"http://localhost:8000"` | Nova API base URL (env: `NOVA_BASE_URL`). The default is for a backend on your own machine; set it to your server's address |
 | `api_key` | `str` | `None` | Nova API key starting with `nova_key_` (env: `NOVA_API_KEY`) |
 | `access_token` | `str` | `None` | JWT access token (env: `NOVA_ACCESS_TOKEN`) |
-| `tenant_id` | `str` | `None` | Active tenant workspace UUID (env: `NOVA_TENANT_ID`) |
+| `tenant_id` | `str` | `None` | **Optional.** Workspace UUID, only needed to choose between several workspaces you belong to. When omitted the server uses your first active workspace (env: `NOVA_TENANT_ID`) |
 | `timeout` | `float` | `30.0` | Request timeout limit in seconds |
 | `max_retries` | `int` | `3` | Maximum retry attempts for transient idempotent failures (capped at 10) |
 | `retry_backoff_factor` | `float` | `0.5` | Exponential backoff multiplier |

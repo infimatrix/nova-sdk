@@ -7,6 +7,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the proje
 ## [0.2.0] - Unreleased
 
 ### Added
+- `tenants.current_tenant_id()` returns the tenant the credentials resolve to (client default, otherwise `GET /auth/me/`).
+- `page` / `page_size` on `tenants.list()`, `tenants.list_members()`, `tenants.memberships.list()`, `auth.list_api_keys()` and
+  `auth.api_keys.list()`, so `iter_items()` works on every list method. `TemplateRenderResult`; `secret`, `secret_masked`,
+  `created_at`, `updated_at` on `WebhookEndpointCreateUpdate`; `message` on `Logout` (corrections the server was observed to
+  need, kept in `openapi/sdk-overlay.yaml` until the backend contract is fixed).
 - `AsyncNovaClient` (`nova_sdk.aio`) with the same resources as `NovaClient`, generated from the
   synchronous sources by `scripts/gen_python_async.py`.
 - Typed response models (`nova_sdk.schemas`) generated from `openapi/nova-api.yaml` by
@@ -17,6 +22,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the proje
 - `client.users` (`list`, `me`) and `client.assets` (`folders`, `files` including multipart upload).
 - Pagination helpers `iter_pages()` / `iter_items()` (sync and async) and `PaginatedResponse.has_next`.
 - `LICENSE` file, `CHANGELOG.md`, single-sourced version (`nova_sdk/_version.py`).
+
+### Changed
+- Workspace operations that put the tenant in the URL (`tenants.get/update`, members) no longer require a tenant id: with
+  only a server URL and an API key the SDK asks the server which tenant the credentials belong to. `tenants.delete()` still
+  requires an explicit id. `templates.render()` now returns `TemplateRenderResult` (the contract described the request body).
+- Resource methods return typed models instead of `dict`. Models support `[]`, `.get()`, `in`,
+  iteration and equality with dicts; `isinstance(x, dict)` is no longer true (use `x.to_dict()`).
+- Path identifiers are URL-encoded, so an id can no longer alter the request path or query string.
+- Legacy non-enveloped error bodies such as `{"error": "..."}` now produce a readable message.
+- Build requires `setuptools>=77` (SPDX `license` expression).
+- `HTTPTransport` shares request/response handling with the new async transport through `TransportCore`.
 
 ### Fixed
 - Credentials are now fully stripped from the `Location` reported by a redirect error when the password itself contains
@@ -29,14 +45,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the proje
 - Public return types of `tenants.list_members`, `contacts.list_groups`, `campaigns.list`, `auth.list_api_keys` and
   `audit.list` now name their model types instead of `dict`.
 - The async resources use an async-typed base class, so `mypy` passes cleanly on the whole package.
-
-### Changed
-- Resource methods return typed models instead of `dict`. Models support `[]`, `.get()`, `in`,
-  iteration and equality with dicts; `isinstance(x, dict)` is no longer true (use `x.to_dict()`).
-- Path identifiers are URL-encoded, so an id can no longer alter the request path or query string.
-- Legacy non-enveloped error bodies such as `{"error": "..."}` now produce a readable message.
-- Build requires `setuptools>=77` (SPDX `license` expression).
-- `HTTPTransport` shares request/response handling with the new async transport through `TransportCore`.
 
 ## [0.1.0]
 

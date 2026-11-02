@@ -21,15 +21,15 @@ def test_default_config():
 
 def test_base_url_normalization():
     # Strips trailing slash
-    cfg1 = NovaConfig(base_url="https://api.novamail.io/")
-    assert cfg1.base_url == "https://api.novamail.io"
+    cfg1 = NovaConfig(base_url="https://nova.example.test/")
+    assert cfg1.base_url == "https://nova.example.test"
 
     # Strips trailing /api/v1 if inadvertently supplied
-    cfg2 = NovaConfig(base_url="https://api.novamail.io/api/v1")
-    assert cfg2.base_url == "https://api.novamail.io"
+    cfg2 = NovaConfig(base_url="https://nova.example.test/api/v1")
+    assert cfg2.base_url == "https://nova.example.test"
 
-    cfg3 = NovaConfig(base_url="https://api.novamail.io/api/v1/")
-    assert cfg3.base_url == "https://api.novamail.io"
+    cfg3 = NovaConfig(base_url="https://nova.example.test/api/v1/")
+    assert cfg3.base_url == "https://nova.example.test"
 
 
 def test_base_url_invalid_schemes():

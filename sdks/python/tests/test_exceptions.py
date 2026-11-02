@@ -117,11 +117,11 @@ def test_redirect_error_inheritance_and_attributes():
     err = NovaRedirectError(
         "Unexpected redirect.",
         status_code=308,
-        location="https://api.novamail.io/api/v1/health/",
+        location="https://nova.example.test/api/v1/health/",
         correlation_id="corr-red-1",
     )
     assert isinstance(err, NovaAPIError)
     assert isinstance(err, NovaError)
     assert err.status_code == 308
-    assert err.location == "https://api.novamail.io/api/v1/health/"
-    assert "location='https://api.novamail.io/api/v1/health/'" in repr(err)
+    assert err.location == "https://nova.example.test/api/v1/health/"
+    assert "location='https://nova.example.test/api/v1/health/'" in repr(err)

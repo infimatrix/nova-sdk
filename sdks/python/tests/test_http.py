@@ -20,75 +20,75 @@ from nova_sdk.exceptions import (
     "endpoint,expected_url",
     [
         # Endpoints with and without trailing slashes
-        ("health", "https://api.novamail.io/api/v1/health/"),
-        ("health/", "https://api.novamail.io/api/v1/health/"),
-        ("/contacts", "https://api.novamail.io/api/v1/contacts/"),
-        ("/contacts/", "https://api.novamail.io/api/v1/contacts/"),
+        ("health", "https://nova.example.test/api/v1/health/"),
+        ("health/", "https://nova.example.test/api/v1/health/"),
+        ("/contacts", "https://nova.example.test/api/v1/contacts/"),
+        ("/contacts/", "https://nova.example.test/api/v1/contacts/"),
         # Existing /api/v1/ prefix with and without slashes
-        ("api/v1/templates", "https://api.novamail.io/api/v1/templates/"),
-        ("api/v1/templates/", "https://api.novamail.io/api/v1/templates/"),
-        ("/api/v1/templates", "https://api.novamail.io/api/v1/templates/"),
-        ("/api/v1/templates/", "https://api.novamail.io/api/v1/templates/"),
-        ("api/v1", "https://api.novamail.io/api/v1/"),
-        ("/api/v1/", "https://api.novamail.io/api/v1/"),
-        ("", "https://api.novamail.io/api/v1/"),
-        ("/", "https://api.novamail.io/api/v1/"),
+        ("api/v1/templates", "https://nova.example.test/api/v1/templates/"),
+        ("api/v1/templates/", "https://nova.example.test/api/v1/templates/"),
+        ("/api/v1/templates", "https://nova.example.test/api/v1/templates/"),
+        ("/api/v1/templates/", "https://nova.example.test/api/v1/templates/"),
+        ("api/v1", "https://nova.example.test/api/v1/"),
+        ("/api/v1/", "https://nova.example.test/api/v1/"),
+        ("", "https://nova.example.test/api/v1/"),
+        ("/", "https://nova.example.test/api/v1/"),
         # Query parameters: trailing slash appended to path, NOT to query string
         (
             "contacts?status=ACTIVE&limit=10",
-            "https://api.novamail.io/api/v1/contacts/?status=ACTIVE&limit=10",
+            "https://nova.example.test/api/v1/contacts/?status=ACTIVE&limit=10",
         ),
         (
             "contacts/?status=ACTIVE",
-            "https://api.novamail.io/api/v1/contacts/?status=ACTIVE",
+            "https://nova.example.test/api/v1/contacts/?status=ACTIVE",
         ),
         (
             "/api/v1/emails/logs?page=2",
-            "https://api.novamail.io/api/v1/emails/logs/?page=2",
+            "https://nova.example.test/api/v1/emails/logs/?page=2",
         ),
         # Valid endpoints containing dots in path identifiers
         (
             "contacts/user.name@example.com",
-            "https://api.novamail.io/api/v1/contacts/user.name@example.com/",
+            "https://nova.example.test/api/v1/contacts/user.name@example.com/",
         ),
         (
             "contacts/user.name@example.com/",
-            "https://api.novamail.io/api/v1/contacts/user.name@example.com/",
+            "https://nova.example.test/api/v1/contacts/user.name@example.com/",
         ),
         (
             "versions/v1.0",
-            "https://api.novamail.io/api/v1/versions/v1.0/",
+            "https://nova.example.test/api/v1/versions/v1.0/",
         ),
         # CSV and export endpoints
         (
             "emails/logs/export",
-            "https://api.novamail.io/api/v1/emails/logs/export/",
+            "https://nova.example.test/api/v1/emails/logs/export/",
         ),
         (
             "emails/logs/export/",
-            "https://api.novamail.io/api/v1/emails/logs/export/",
+            "https://nova.example.test/api/v1/emails/logs/export/",
         ),
         (
             "contacts/sample-template",
-            "https://api.novamail.io/api/v1/contacts/sample-template/",
+            "https://nova.example.test/api/v1/contacts/sample-template/",
         ),
         # File paths with known file extensions (no trailing slash added)
         (
             "exports/data.csv",
-            "https://api.novamail.io/api/v1/exports/data.csv",
+            "https://nova.example.test/api/v1/exports/data.csv",
         ),
         (
             "schema.json",
-            "https://api.novamail.io/api/v1/schema.json",
+            "https://nova.example.test/api/v1/schema.json",
         ),
         (
             "exports/data.csv?format=raw",
-            "https://api.novamail.io/api/v1/exports/data.csv?format=raw",
+            "https://nova.example.test/api/v1/exports/data.csv?format=raw",
         ),
     ],
 )
 def test_build_url(endpoint: str, expected_url: str):
-    client = NovaClient(base_url="https://api.novamail.io")
+    client = NovaClient(base_url="https://nova.example.test")
     assert client.transport.build_url(endpoint) == expected_url
 
 
@@ -199,7 +199,7 @@ def test_per_request_tenant_override(mock_client_factory):
 
 @pytest.mark.parametrize("status_code", [301, 302, 307])
 def test_redirects_raise_nova_redirect_error(mock_client_factory, status_code: int):
-    target_location = "https://api.novamail.io/api/v1/contacts/"
+    target_location = "https://nova.example.test/api/v1/contacts/"
 
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(
@@ -225,7 +225,9 @@ def test_redirects_raise_nova_redirect_error(mock_client_factory, status_code: i
 
 
 def test_redirect_sanitizes_credentials_in_location(mock_client_factory):
-    sensitive_location = "https://admin:super_secret_pw@api.novamail.io/api/v1/health/"
+    sensitive_location = (
+        "https://admin:super_secret_pw@nova.example.test/api/v1/health/"
+    )
 
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(
@@ -242,7 +244,7 @@ def test_redirect_sanitizes_credentials_in_location(mock_client_factory):
     assert "super_secret_pw" not in err.message
     assert "super_secret_pw" not in (err.location or "")
     assert "admin@" not in (err.location or "")
-    assert err.location == "https://api.novamail.io/api/v1/health/"
+    assert err.location == "https://nova.example.test/api/v1/health/"
 
 
 def test_201_created_response_handling(mock_client_factory):
