@@ -126,9 +126,13 @@ class ScriptedServer:
         self.port = self.httpd.server_address[1]
         self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
 
+    MAX_REQUESTS = 60  # no scenario needs more; an SDK that loops (e.g. endless paging) gets a hard error instead
+
     def _pick(self, record: dict) -> dict:
         with self._lock:
             self.requests.append(record)
+            if len(self.requests) > self.MAX_REQUESTS:
+                return {"status": 500, "json": {"error": "conformance server: runaway request loop"}}
             query = dict(record["query"])
             for step in self.steps:
                 when = step.get("when_query")
@@ -327,9 +331,12 @@ def run_one(sdk: str, command: list[str], scenario: dict) -> tuple[dict, list[di
             "call": scenario["call"],
         }
         spec["client"].pop("base_url_suffix", None)
-        proc = subprocess.run(
-            [*command, json.dumps(spec)], capture_output=True, text=True, timeout=90, env=clean_env, check=False
-        )
+        try:
+            proc = subprocess.run(
+                [*command, json.dumps(spec)], capture_output=True, text=True, timeout=90, env=clean_env, check=False
+            )
+        except subprocess.TimeoutExpired:
+            return {"kind": "driver_failure", "message": "driver did not finish within 90 s (hung or looping)"}, list(server.requests), ""
         recorded = list(server.requests)
     lines = [ln for ln in proc.stdout.splitlines() if ln.startswith("{")]
     if proc.returncode != 0 or not lines:
