@@ -79,9 +79,9 @@ describe("tenants", () => {
     expect(calls[3]).toMatchObject({ method: "DELETE" });
   });
 
-  it("requires a tenant for tenant-scoped paths", async () => {
-    const { client } = mockClient(() => envelope({}));
-    await expect(client.tenants.get()).rejects.toThrow(/tenant_id must be provided/);
+  it("without a tenant id asks the server (see tenant-lookup.test.ts); a malformed id is rejected", async () => {
+    const { client } = mockClient(() => envelope({})); // the server reports no current tenant
+    await expect(client.tenants.get()).rejects.toThrow(/did not report a current tenant/);
     await expect(client.tenants.get("nope")).rejects.toBeInstanceOf(NovaValidationError);
   });
 

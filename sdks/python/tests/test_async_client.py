@@ -245,3 +245,40 @@ def test_async_client_mirrors_sync_resource_surface():
                 assert _public_methods(sub) == _public_methods(
                     getattr(aio_res, sub_name)
                 )
+
+
+def test_async_tenant_lookup_and_paging(async_client_factory):
+    """The generated async layer must await the tenant lookup and accept paging on every list method."""
+    seen: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request.url.path)
+        if request.url.path == "/api/v1/auth/me/":
+            return json_response(data={"current_tenant": {"id": TENANT}})
+        page = int(request.url.params.get("page", "1"))
+        return json_response(
+            data={
+                "success": True,
+                "pagination": {
+                    "count": 2,
+                    "next": "x" if page < 2 else None,
+                    "page": page,
+                    "total_pages": 2,
+                    "page_size": 1,
+                },
+                "results": [{"id": f"m{page}"}],
+            }
+        )
+
+    client = async_client_factory(handler, api_key="k")
+
+    async def go():
+        assert await client.tenants.current_tenant_id() == TENANT
+        return [
+            m.id
+            async for m in client.iter_items(client.tenants.list_members, page_size=1)
+        ]
+
+    assert run(go()) == ["m1", "m2"]
+    assert seen[0] == "/api/v1/auth/me/"
+    assert f"/api/v1/tenants/{TENANT}/members/" in seen
