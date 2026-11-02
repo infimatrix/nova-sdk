@@ -14,10 +14,10 @@ nobody has checked yet (see [Not verified](#not-verified)). The automated checks
 |---|---|
 | Baseline before any change | all existing checks PASS (Python 317 tests, TypeScript 115, Java 84, contract 34, coverage 98/98 each) |
 | Final, from a clean copy of the tree (`scripts/verify_all.sh`) | **40 PASS, 0 FAIL, 0 NOT RUN** |
-| Defects found in existing SDK code | **3** (all fixed, each with regression tests that fail on the old source) |
+| Defects found in existing SDK code | **3** by the conformance and mutation work (path ids, invalid JSON body, redirect credentials) plus **3** by the live run (tenant id demanded, Python list paging, response fields lost); all fixed, each with regression tests |
 | Test-suite weaknesses found by mutation testing | retry timing, `Retry-After`, 3xx/2xx boundaries and error-field propagation were not pinned; now covered |
-| Injected defects detected by the cross-language suite | 22 of 22 (plus 3 equivalent ones masked by a second layer) |
-| Live end-to-end run of all three SDKs against a development server, with real SES delivery | **PASS with findings** (section 12) |
+| Injected defects detected by the cross-language suite | 28 of 28 (plus 3 equivalent ones masked by a second layer); 31 defects in total across the three SDKs |
+| Live end-to-end run of all three SDKs against a development server, with real SES delivery | first run: findings; **after the fixes: 0 FAIL in all three SDKs, 6 of 6 emails DELIVERED per SDK** (section 12) |
 | TLS, CodeQL, JDK 21 / Node 18 / Python 3.10-3.13 runs, production backend | **NOT RUN / NOT VERIFIED** (section 11) |
 
 ### Defects found in the existing SDKs
@@ -70,19 +70,19 @@ rather than recreated. The generator is the repository's own `scripts/gen_java_m
 
 | Area | Check | Result |
 |---|---|---|
-| Root | contract + conformance-checker tests (`pytest tests`) | PASS, 62 tests (36 contract incl. release-safeguard cases for the new workflows, 26 checker) |
+| Root | contract + conformance-checker tests (`pytest tests`) | PASS, 68 tests (42 contract incl. overlay and release-safeguard cases, 26 checker) |
 | Root | generated code up to date (python models, python async, ts types, java models) | PASS x4 |
 | Root | SDK coverage of the contract, strict | PASS: python, typescript, java each 98/98 required operations (4 documented exclusions in `openapi/sdk-exclusions.yaml`) |
 | Root | actionlint on all workflows; YAML parse | PASS; PASS |
 | Python | ruff check / format / mypy | PASS x3 |
-| Python | pytest (unit + property) | PASS, 355 tests |
+| Python | pytest (unit + property) | PASS, 365 tests |
 | Python | sdist + wheel build, `twine check` | PASS |
 | Python | wheel and sdist install into clean venvs; import smoke test run outside the source tree | PASS x3 (prints `0.2.0`) |
-| TypeScript | `npm ci`, typecheck, vitest (unit + property), build, `check:package` | PASS, 150 tests in 8 files |
+| TypeScript | `npm ci`, typecheck, vitest (unit + property), build, `check:package` | PASS, 160 tests in 9 files |
 | TypeScript | `npm pack`, tarball install into a clean project, ESM import, CJS require | PASS x4 (prints `0.1.0`) |
-| Java | `mvn clean verify` (tests, JaCoCo, Checkstyle, javadoc, jar, sources) | PASS, 106 tests, 0 Checkstyle violations |
+| Java | `mvn clean verify` (tests, JaCoCo, Checkstyle, javadoc, jar, sources) | PASS, 115 tests, 0 Checkstyle violations |
 | Java | install into a throw-away local Maven repo + separate consumer project compiles and runs | PASS x2 |
-| Cross-language | `tests/conformance/conformance.py` | PASS, 327/327 (109 scenarios x 3 SDKs) |
+| Cross-language | `tests/conformance/conformance.py` | PASS, 351/351 (117 scenarios x 3 SDKs) |
 
 Only the local Python (3.14), Node (20/22) and JDK (17) versions were exercised here. The CI matrices (Python 3.10-3.14,
 Node 18.17/20/22/24, JDK 17/21) are defined in the workflows but were **NOT RUN** for this report.
@@ -101,8 +101,8 @@ suite below. `info.version` of the contract and the SDK package versions are tra
 ## 5. Cross-language conformance
 
 `tests/conformance/` runs one neutral scenario file against a real local HTTP server and a thin driver per SDK
-([README](../tests/conformance/README.md)). 109 scenarios expand to 327 runs. Every scenario cites its documented source
-in its `doc` field. Result: **PASS 327/327**.
+([README](../tests/conformance/README.md)). 117 scenarios expand to 351 runs. Every scenario cites its documented source
+in its `doc` field. Result: **PASS 351/351**. Scenarios C-23 (tenant lookup, tenant paging) and C-24 (typed render and webhook-secret fields) were added after the live run.
 
 | Behaviour (verification-plan ids) | Scenarios | Notes |
 |---|---|---|
@@ -124,7 +124,7 @@ header, extra retry, leaked secret, wrong timing window, hostile path) and requi
 ### Defect injection ("would a plausible wrong implementation pass?")
 
 `tests/conformance/inject_defects.py` copies each SDK, applies a one-line representative bug, rebuilds, and runs the
-suite against that copy only. Final result: **22 detected, 3 equivalent, 0 missed**.
+suite against that copy only. Final result on the final code: **28 detected, 3 equivalent, 0 missed** (31 defects; the 6 added after the live run target the tenant lookup and deletion).
 
 | Defect (per SDK where listed) | Detected by |
 |---|---|
@@ -142,6 +142,13 @@ suite against that copy only. Final result: **22 detected, 3 equivalent, 0 misse
 The earlier run of this tool reported 5 undetected defects; two were weak defects (see section 1), three were the
 redundant-layer cases above, and one was a patch that did not match the source. All were resolved as described, none by
 removing assertions.
+
+A later full run of the tool on the final code first reported two misses (pagination skipping pages in TypeScript and Java).
+The defects were being caught, but a hand-run showed the cause was in the harness: with the defect, the new tenant-paging
+scenario made the SDK loop, the driver timed out, and the runner crashed on the unhandled timeout instead of reporting a
+failed scenario, so the tool saw no failures. Fixed in the harness (a hung driver is now a reported failure, and the scripted
+server stops a request loop after 60 requests), with two checker tests for it; both defects are now detected, by C-18b and
+C-23e. No expectation was loosened.
 
 ## 6. Property-based tests
 
@@ -277,6 +284,8 @@ Full behaviour list and sources: [verification-plan.md](verification-plan.md). `
 | CodeQL, GitHub dependency review, Java dependency vulnerability scan | NOT RUN | run in GitHub only |
 | Breaking-change detection between contract versions | NOT RUN | no tool such as oasdiff was added; `sync_openapi.py --check` detects drift only |
 | Copyright holder authorisation | NOT VERIFIED | see section 8 |
+| Tenant lookup for accounts that belong to several tenants | NOT VERIFIED | only a single-tenant account was available; the SDK uses the tenant the server reports |
+| Mutation scores after the second round of changes | NOT RUN | section 7 numbers are from before the tenant-lookup, overlay and paging changes |
 | Large responses, high concurrency, memory | NOT RUN | not in scope of local checks |
 | Mutation coverage of resources/models | NOT RUN | excluded (generated or declarative) |
 
@@ -331,7 +340,36 @@ contain the access-key id, which the contract declares.
 | L5 | `users.list` answers 403 for a tenant-admin account (probably platform-admin only); not an SDK defect. A failed login answers 400, not 401. | server behaviour | all |
 | L6 | The mail provider's absence is invisible at send time (see Email above); `emails.send` answers `PROCESSING` and the failure appears only in the logs. | server behaviour | all |
 
-None of L1-L6 was changed in code. L1, L3 and L4 are candidates for SDK changes; L3 also needs the backend.
+### Resolution and retest
+
+Changes made after the first live run (commits listed in section 15); the live run was then repeated with the final code.
+
+| # | Resolution |
+|---|---|
+| L1 | **Fixed.** When no tenant is named (argument, per-call option, client default) the member calls and `tenants.get/update` ask the server which tenant the credentials resolve to (`GET auth/me/`, `current_tenant`) and use it; `current_tenant_id()` / `currentTenantId()` exposes it. `tenants.delete` is deliberately excluded: the id must always be explicit. Tests: unit tests per SDK (including the async layer), conformance C-23, and three injected defects (wrong field read, deletion that infers the id). The quick starts and README no longer pass a tenant id. |
+| L2 | **Documented, not changed.** It is server behaviour; retrying a non-idempotent write inside the SDK would break the no-blind-retry rule. `docs/error-handling.md` tells callers to retry the second call themselves. |
+| L3 | **Fixed in the SDKs, still open in the backend.** `openapi/sdk-overlay.yaml` adds `TemplateRenderResult` (and `templates.render` returns it), `secret`, `secret_masked`, `created_at`, `updated_at` on webhook creation, and `message` on logout, each with its evidence; the generators apply it on top of the unchanged snapshot. `tests/contract/test_overlay.py` fails once the backend contract declares these fields, so the overlay entries get deleted. The backend contract still needs the fix; this report cannot do that. After the change the live shape check finds **0 undeclared keys in 25 response models** (it was 3 of 22). |
+| L4 | **Fixed.** `page` and `page_size` on `tenants.list`, `tenants.list_members`, `tenants.memberships.list`, `auth.list_api_keys`, `auth.api_keys.list`; unit tests and conformance C-23e check that `iter_items` walks them. |
+| L5 | **Documented.** Role-limited endpoints (403) and the 400 on a failed login are server behaviour. |
+| L6 | **Documented.** "Queued is not delivered"; configure a provider first. |
+
+**Retest with the final code, same server and method.**
+
+| SDK | PASS | PASS after retry | FAIL | Emails delivered |
+|---|---|---|---|---|
+| Python | 106 | 1 (L2) | 0 | 6 of 6 |
+| TypeScript | 104 | 1 (L2) | 0 | 6 of 6 |
+| Java | 103 | 2 (L2) | 0 | 6 of 6 |
+
+The retest additionally asserts, in each SDK: `tenants.get()` and the member list work with only a URL and a key,
+`current_tenant_id()` equals the tenant in the tenant list, `tenants.delete()` without an id is refused before any request,
+render and webhook creation return typed fields (`subject`, `html_content`, `secret`), and `iter_items` /
+`for await` walks the tenant and API-key lists. A server-side audit afterwards found 0 leftover test objects, no active
+test API keys, and only the SES provider that was added on request.
+
+Limits of the lookup (L1): it relies on the server's `current_tenant` for the credentials. It was exercised with an account
+that has **one** tenant. For an account in several tenants the SDK takes whatever the server reports (documented as the
+first active membership); that case is NOT VERIFIED.
 
 Limits of this run: one server, one tenant, one tenant-admin account, one SES identity (ap-south-1); no platform-admin
 operations; no load; webhook delivery was only triggered towards a reserved example domain and its result was not
@@ -361,5 +399,5 @@ scripts/mutation/run_python.sh | run_typescript.sh | run_java.sh
 
 ## 15. Commits
 
-See `git log` on branch `sdk-verification-hardening`; the commit list is also in the final report of the work session.
+Branch `sdk-fixes-live-verified` (not pushed). Functional commits, oldest first: the live-run report; "expose the response fields the server really returns (overlay)"; "tenant-scoped calls work with only a server URL and an API key"; "tenant lookup, tenant paging and corrected response fields" (conformance); "a server URL and an API key are all you need; replace the placeholder host" (docs). Commit messages carry no co-author trailer.
 No package was published, no registry upload, deployment, release or tag was made, and no workflow was triggered.

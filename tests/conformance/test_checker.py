@@ -193,3 +193,32 @@ def test_boundary_statuses_are_in_the_scenarios():
     assert {300, 399} <= redirects
     successes = {s["server"][0]["status"] for rid, s in SCENARIOS.items() if rid.startswith("C-15b-")}
     assert {200, 299} <= successes
+
+
+def test_a_looping_sdk_is_stopped_by_the_server_and_reported_as_a_failure():
+    import urllib.error
+    import urllib.request
+
+    with c.ScriptedServer([{"status": 200, "json": {"ok": True}}]) as server:
+        statuses = []
+        for _ in range(c.ScriptedServer.MAX_REQUESTS + 5):
+            try:
+                with urllib.request.urlopen(f"http://127.0.0.1:{server.port}/x") as r:  # noqa: S310
+                    statuses.append(r.status)
+            except urllib.error.HTTPError as e:
+                statuses.append(e.code)
+    assert statuses[: c.ScriptedServer.MAX_REQUESTS] == [200] * c.ScriptedServer.MAX_REQUESTS
+    assert set(statuses[c.ScriptedServer.MAX_REQUESTS :]) == {500}
+
+
+def test_a_hung_driver_becomes_a_driver_failure_not_a_crash(monkeypatch):
+    import subprocess
+
+    def hang(*a, **k):
+        raise subprocess.TimeoutExpired(cmd="driver", timeout=90)
+
+    monkeypatch.setattr(c.subprocess, "run", hang)
+    scenario = {"client": {}, "call": {"op": "health"}, "server": [{"status": 200, "json": {}}]}
+    outcome, recorded, _ = c.run_one("python", ["driver"], scenario)
+    assert outcome["kind"] == "driver_failure" and "did not finish" in outcome["message"]
+    assert recorded == []
