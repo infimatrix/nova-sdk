@@ -99,7 +99,7 @@ if [ -x "${GITLEAKS:-}" ]; then
   run "gitleaks: working tree" "$root" "$GITLEAKS" dir --no-banner --redact .
   run "gitleaks: git history"  "$root" "$GITLEAKS" git --no-banner --redact .
 else
-  skip "gitleaks" "set GITLEAKS=/path/to/gitleaks (v8.30.1); CI runs it in security.yml"
+  skip "gitleaks" "set GITLEAKS=/path/to/gitleaks (v8.30.1); CI runs it in ci.yml"
 fi
 
 printf '\n%s\n' "${summary[@]}"

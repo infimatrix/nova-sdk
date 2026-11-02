@@ -5,20 +5,19 @@ public npm registry, Maven Central or any other public index. The GitHub reposit
 
 | SDK | AR format | Repository URL | Status |
 |---|---|---|---|
-| Python `infimatrix-nova-sdk` | Python | `https://<LOCATION>-python.pkg.dev/<PROJECT>/<REPOSITORY>/` (install via `…/simple/`) | Release workflow ready |
-| TypeScript `@infimatrix/nova-sdk` | npm | `https://<LOCATION>-npm.pkg.dev/<PROJECT>/<REPOSITORY>/` | Release workflow ready |
-| Java `com.infimatrix:nova-sdk` | Maven | `https://<LOCATION>-maven.pkg.dev/<PROJECT>/<REPOSITORY>` | SDK implemented; **no release workflow or `distributionManagement` yet** |
+| Python `infimatrix-nova-sdk` | Python | `https://<LOCATION>-python.pkg.dev/<PROJECT>/<REPOSITORY>/` (install via `…/simple/`) | Manual publish |
+| TypeScript `@infimatrix/nova-sdk` | npm | `https://<LOCATION>-npm.pkg.dev/<PROJECT>/<REPOSITORY>/` | Manual publish |
+| Java `com.infimatrix:nova-sdk` | Maven | `https://<LOCATION>-maven.pkg.dev/<PROJECT>/<REPOSITORY>` | SDK implemented; **no `distributionManagement` yet; manual publish** |
 | Kotlin/Android | Maven | same format | SDK not implemented |
 | Go | Go | `https://<LOCATION>-go.pkg.dev/<PROJECT>/<REPOSITORY>` | SDK not implemented |
 
 Supported formats: <https://docs.cloud.google.com/artifact-registry/docs/supported-formats>.
-Java is built and tested locally only: its `pom.xml` has no `distributionManagement`, `mvn deploy` is not configured, and no
-release workflow exists. Publishing it to Artifact Registry Maven (and the Kotlin and Go rows) is future work.
+No SDK has a release workflow. Java: its `pom.xml` has no `distributionManagement` and `mvn deploy` is not configured. Publishing it to Artifact Registry Maven (and the Kotlin and Go rows) is future work.
 
 ## Nothing is hard-coded
 
-Project, location, repository names and the CI identity are configuration, never source code. The release workflows read
-them from variables of the `artifact-registry` GitHub environment:
+Project, location and repository names are configuration, never source code. Use these names for the values you supply
+when publishing manually:
 
 | Variable | Meaning |
 |---|---|
@@ -27,7 +26,7 @@ them from variables of the `artifact-registry` GitHub environment:
 | `AR_PYTHON_REPOSITORY` | ID of the Python repository |
 | `AR_NPM_REPOSITORY` | ID of the npm repository |
 | `GCP_WORKLOAD_IDENTITY_PROVIDER` | Full resource name of the Workload Identity provider |
-| `GCP_SERVICE_ACCOUNT` | Service account the workflow impersonates |
+| `GCP_SERVICE_ACCOUNT` | Service account used for publishing |
 
 These are identifiers, not secrets, so they are variables. No key, token or password is stored in the repository or in
 GitHub secrets.
@@ -65,5 +64,5 @@ Because the scope is mapped, all other packages still come from your default reg
 
 - Python: the package carries the `Private :: Do Not Upload` classifier, which the public PyPI rejects.
 - npm: `prepublishOnly` runs `sdks/typescript/scripts/require-artifact-registry.mjs`, which fails unless the effective
-  `@infimatrix:registry` is an HTTPS `*-npm.pkg.dev` host. The release workflow runs the same guard before `npm publish`.
-- Release workflows contain no PyPI, npm or Maven destination; `tests/contract/test_release_safeguards.py` enforces this.
+  `@infimatrix:registry` is an HTTPS `*-npm.pkg.dev` host.
+- CI has no publish step at all; `tests/contract/test_release_safeguards.py` enforces this.
