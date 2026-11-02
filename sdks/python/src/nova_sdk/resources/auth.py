@@ -35,13 +35,22 @@ class APIKeysResource(BaseResource):
     def list(
         self,
         *,
+        page: int | None = None,
+        page_size: int | None = None,
         params: Mapping[str, Any] | None = None,
     ) -> PaginatedResponse[APIKey]:
         """List active API keys for the authenticated user.
 
         Endpoint: GET /api/v1/auth/api-keys/
         """
-        response = self._transport.request("GET", "auth/api-keys/", params=params)
+        query_params: dict[str, Any] = dict(params or {})
+        if page is not None:
+            query_params["page"] = page
+        if page_size is not None:
+            query_params["page_size"] = page_size
+        response = self._transport.request(
+            "GET", "auth/api-keys/", params=query_params or None
+        )
         return PaginatedResponse.from_response(response, item_parser=APIKey.from_dict)
 
     def create(
@@ -316,10 +325,12 @@ class AuthResource(BaseResource):
     def list_api_keys(
         self,
         *,
+        page: int | None = None,
+        page_size: int | None = None,
         params: Mapping[str, Any] | None = None,
     ) -> PaginatedResponse[APIKey]:
         """Shortcut for client.auth.api_keys.list()."""
-        return self.api_keys.list(params=params)
+        return self.api_keys.list(page=page, page_size=page_size, params=params)
 
     def create_api_key(
         self,

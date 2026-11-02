@@ -17,26 +17,33 @@ import { BaseResource, pathId, type ListQuery } from "./base.js";
 
 type PageQuery = Pick<ListQuery, "page" | "page_size">;
 
-/** Resolve a tenant ID from an explicit argument or the client default. */
-type TenantResolver = (explicit?: string) => string;
+/**
+ * How a tenant id is found when the caller does not name one.
+ * `resolve`: explicit argument, then the client default, then the tenant the server reports for the credentials.
+ * `require`: explicit argument or client default only; never inferred (tenant deletion).
+ */
+export interface TenantResolvers {
+  resolve(explicit?: string, options?: RequestOptions): Promise<string>;
+  require(explicit?: string): string;
+}
 
 /** Membership bindings between users and a tenant. */
 export class TenantMembershipsResource extends BaseResource {
   constructor(
     http: HttpTransport,
-    private readonly resolveTenant: TenantResolver,
+    private readonly tenants: TenantResolvers,
   ) {
     super(http);
   }
 
   /** `GET /api/v1/tenants/{tenant_id}/members/` */
-  list(tenantId?: string, query: PageQuery = {}, options: RequestOptions = {}): Promise<Page<Membership>> {
-    return this.listPage<Membership>(`tenants/${this.resolveTenant(tenantId)}/members/`, { ...query }, options);
+  async list(tenantId?: string, query: PageQuery = {}, options: RequestOptions = {}): Promise<Page<Membership>> {
+    return this.listPage<Membership>(`tenants/${await this.tenants.resolve(tenantId, options)}/members/`, { ...query }, options);
   }
 
   /** `POST /api/v1/tenants/{tenant_id}/members/` */
   async add(body: MembershipCreateRequest, tenantId?: string, options: RequestOptions = {}): Promise<MembershipCreate> {
-    const res = await this.http.request<MembershipCreate>("POST", `tenants/${this.resolveTenant(tenantId)}/members/`, {
+    const res = await this.http.request<MembershipCreate>("POST", `tenants/${await this.tenants.resolve(tenantId, options)}/members/`, {
       ...options,
       json: body,
     });
@@ -47,7 +54,7 @@ export class TenantMembershipsResource extends BaseResource {
   async get(membershipId: string, tenantId?: string, options: RequestOptions = {}): Promise<Membership> {
     const res = await this.http.request<Membership>(
       "GET",
-      `tenants/${this.resolveTenant(tenantId)}/members/${pathId(membershipId, "membershipId")}/`,
+      `tenants/${await this.tenants.resolve(tenantId, options)}/members/${pathId(membershipId, "membershipId")}/`,
       options,
     );
     return res.data;
@@ -65,7 +72,7 @@ export class TenantMembershipsResource extends BaseResource {
     }
     const res = await this.http.request<MembershipUpdate>(
       "PATCH",
-      `tenants/${this.resolveTenant(tenantId)}/members/${pathId(membershipId, "membershipId")}/`,
+      `tenants/${await this.tenants.resolve(tenantId, options)}/members/${pathId(membershipId, "membershipId")}/`,
       { ...options, json: body },
     );
     return res.data;
@@ -75,7 +82,7 @@ export class TenantMembershipsResource extends BaseResource {
   async remove(membershipId: string, tenantId?: string, options: RequestOptions = {}): Promise<void> {
     await this.http.request(
       "DELETE",
-      `tenants/${this.resolveTenant(tenantId)}/members/${pathId(membershipId, "membershipId")}/`,
+      `tenants/${await this.tenants.resolve(tenantId, options)}/members/${pathId(membershipId, "membershipId")}/`,
       options,
     );
   }
@@ -87,10 +94,10 @@ export class TenantsResource extends BaseResource {
 
   constructor(
     http: HttpTransport,
-    private readonly resolveTenant: TenantResolver,
+    private readonly tenants: TenantResolvers,
   ) {
     super(http);
-    this.memberships = new TenantMembershipsResource(http, resolveTenant);
+    this.memberships = new TenantMembershipsResource(http, tenants);
   }
 
   /** `GET /api/v1/tenants/` */
@@ -104,24 +111,32 @@ export class TenantsResource extends BaseResource {
     return res.data;
   }
 
-  /** `GET /api/v1/tenants/{id}/`. Defaults to the client's tenant. */
+  /**
+   * The id of the tenant these credentials resolve to: the client's default tenant if one is set, otherwise the
+   * tenant the server reports (`GET /api/v1/auth/me/`, the caller's first active membership).
+   */
+  currentTenantId(options: RequestOptions = {}): Promise<string> {
+    return this.tenants.resolve(undefined, options);
+  }
+
+  /** `GET /api/v1/tenants/{id}/`. Defaults to the client's tenant, then to the tenant the credentials resolve to. */
   async get(tenantId?: string, options: RequestOptions = {}): Promise<Tenant> {
-    const res = await this.http.request<Tenant>("GET", `tenants/${this.resolveTenant(tenantId)}/`, options);
+    const res = await this.http.request<Tenant>("GET", `tenants/${await this.tenants.resolve(tenantId, options)}/`, options);
     return res.data;
   }
 
   /** `PATCH /api/v1/tenants/{id}/` */
   async update(body: PatchedTenantUpdateRequest, tenantId?: string, options: RequestOptions = {}): Promise<TenantUpdate> {
-    const res = await this.http.request<TenantUpdate>("PATCH", `tenants/${this.resolveTenant(tenantId)}/`, {
+    const res = await this.http.request<TenantUpdate>("PATCH", `tenants/${await this.tenants.resolve(tenantId, options)}/`, {
       ...options,
       json: body,
     });
     return res.data;
   }
 
-  /** `DELETE /api/v1/tenants/{id}/` */
+  /** `DELETE /api/v1/tenants/{id}/`. The id is never inferred: pass it or configure it on the client. */
   async delete(tenantId?: string, options: RequestOptions = {}): Promise<void> {
-    await this.http.request("DELETE", `tenants/${this.resolveTenant(tenantId)}/`, options);
+    await this.http.request("DELETE", `tenants/${this.tenants.require(tenantId)}/`, options);
   }
 
   // Shortcuts mirroring the Python SDK

@@ -18,7 +18,7 @@ import { ContactsResource } from "./resources/contacts.js";
 import { EmailsResource } from "./resources/emails.js";
 import { ProvidersResource } from "./resources/providers.js";
 import { TemplatesResource } from "./resources/templates.js";
-import { TenantsResource } from "./resources/tenants.js";
+import { TenantsResource, type TenantResolvers } from "./resources/tenants.js";
 import { UsersResource } from "./resources/users.js";
 import { WebhooksResource } from "./resources/webhooks.js";
 import type { HealthStatus } from "./schemas.js";
@@ -56,11 +56,27 @@ export class NovaClient {
   constructor(options: NovaClientOptions = {}) {
     this.transport = new HttpTransport(resolveConfig(options));
     const http = this.transport;
-    const resolveTenant = (explicit?: string): string => this.resolveTenant(explicit);
+    const tenants: TenantResolvers = {
+      // explicit argument, then the client default, then the tenant the server reports for the credentials
+      resolve: async (explicit, options) => {
+        const named = explicit ?? this.config.tenantId;
+        if (named && String(named).trim()) return normalizeTenantId(named);
+        const me = await http.request<{ current_tenant?: { id?: string } | null }>("GET", "auth/me/", options ?? {});
+        const found = me.data?.current_tenant?.id;
+        if (!found) {
+          throw new NovaValidationError(
+            "The server did not report a current tenant for these credentials; pass a tenant id explicitly.",
+          );
+        }
+        return normalizeTenantId(found);
+      },
+      // never inferred (used by tenant deletion)
+      require: (explicit) => this.resolveTenant(explicit),
+    };
 
     this.auth = new AuthResource(http, (token) => this.setAccessToken(token));
     this.users = new UsersResource(http);
-    this.tenants = new TenantsResource(http, resolveTenant);
+    this.tenants = new TenantsResource(http, tenants);
     this.templates = new TemplatesResource(http);
     this.contacts = new ContactsResource(http);
     this.emails = new EmailsResource(http);

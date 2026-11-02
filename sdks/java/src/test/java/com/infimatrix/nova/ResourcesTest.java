@@ -66,7 +66,8 @@ class ResourcesTest {
             assertThrows(NovaClientValidationException.class,
                     () -> client.tenants().memberships().update(TENANT, ID, PatchedMembershipUpdateRequest.builder().build()));
             assertThrows(NovaClientValidationException.class, () -> client.assets().files().update(ID, null, null));
-            assertThrows(NovaClientValidationException.class, () -> client.tenants().get(null));
+            // tenants().get(null) now asks the server for the tenant (TenantLookupTest); deleting a tenant is never inferred
+            assertThrows(NovaClientValidationException.class, () -> client.tenants().delete(null));
             assertEquals(0, server.requests().size());
         }
     }

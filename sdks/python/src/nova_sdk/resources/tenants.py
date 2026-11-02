@@ -35,21 +35,47 @@ class TenantMembershipsResource(BaseResource):
         super().__init__(transport)
         self._client = client
 
-    def _resolve_tenant_id(self, tenant_id: str | None) -> str:
+    def _explicit_tenant_id(self, tenant_id: str | None) -> str | None:
+        """The tenant the caller named (argument, then client default), validated; ``None`` if neither is set."""
         tid = tenant_id or self._transport.config.tenant_id
         if not tid or not str(tid).strip():
-            raise NovaValidationError(
-                "tenant_id must be provided or configured on the client."
-            )
+            return None
         try:
             return str(uuid.UUID(str(tid).strip()))
         except (ValueError, AttributeError) as exc:
             raise NovaValidationError(f"Invalid UUID for tenant_id: {tid!r}") from exc
 
+    def current_tenant_id(self) -> str:
+        """Return the id of the tenant these credentials resolve to.
+
+        Uses the client's default tenant when one is configured; otherwise asks the server
+        (``GET /api/v1/auth/me/``), which applies its own rule: the caller's first active membership.
+        This is what lets an application that only knows the server URL and an API key call
+        tenant-scoped operations.
+        """
+        explicit = self._explicit_tenant_id(None)
+        if explicit:
+            return explicit
+        response = self._transport.request("GET", "auth/me/")
+        current = (response.data or {}).get("current_tenant") or {}
+        found = current.get("id")
+        if not found:
+            raise NovaValidationError(
+                "The server did not report a current tenant for these credentials; pass tenant_id explicitly."
+            )
+        try:
+            return str(uuid.UUID(str(found)))
+        except (ValueError, AttributeError) as exc:
+            raise NovaValidationError(
+                f"The server reported an invalid current tenant id: {found!r}"
+            ) from exc
+
     def list(
         self,
         tenant_id: str | None = None,
         *,
+        page: int | None = None,
+        page_size: int | None = None,
         params: Mapping[str, Any] | None = None,
     ) -> PaginatedResponse[Membership]:
         """List member users associated with a specific tenant organization.
@@ -57,11 +83,16 @@ class TenantMembershipsResource(BaseResource):
         Endpoint: GET /api/v1/tenants/{tenant_id}/members/
         Requires Tenant Admin or Platform Admin privileges.
         """
-        tid = self._resolve_tenant_id(tenant_id)
+        tid = self._explicit_tenant_id(tenant_id) or self.current_tenant_id()
+        query_params: dict[str, Any] = dict(params or {})
+        if page is not None:
+            query_params["page"] = page
+        if page_size is not None:
+            query_params["page_size"] = page_size
         response = self._transport.request(
             "GET",
             f"tenants/{tid}/members/",
-            params=params,
+            params=query_params or None,
         )
         return PaginatedResponse.from_response(
             response, item_parser=Membership.from_dict
@@ -81,12 +112,12 @@ class TenantMembershipsResource(BaseResource):
         Requires Tenant Admin or Platform Admin privileges.
 
         Args:
-            tenant_id: Target tenant UUID string (or client default if omitted).
+            tenant_id: Target tenant UUID string. If omitted, the client default is used, then the tenant the credentials resolve to.
             email: Registered account email of the user to add.
             role: Assigned tenant role ('TENANT_ADMIN', 'TEMPLATE_MANAGER', 'CAMPAIGN_MANAGER', 'SENDER', 'VIEWER').
             status: Membership status ('ACTIVE', 'INACTIVE').
         """
-        tid = self._resolve_tenant_id(tenant_id)
+        tid = self._explicit_tenant_id(tenant_id) or self.current_tenant_id()
         if not email or not isinstance(email, str) or not email.strip():
             raise NovaValidationError("email must be a non-empty string.")
 
@@ -113,7 +144,7 @@ class TenantMembershipsResource(BaseResource):
         Endpoint: GET /api/v1/tenants/{tenant_id}/members/{membership_id}/
         Requires Tenant Admin or Platform Admin privileges.
         """
-        tid = self._resolve_tenant_id(tenant_id)
+        tid = self._explicit_tenant_id(tenant_id) or self.current_tenant_id()
         if not membership_id or not str(membership_id).strip():
             raise NovaValidationError("membership_id must be a non-empty string.")
         try:
@@ -142,7 +173,7 @@ class TenantMembershipsResource(BaseResource):
         Endpoint: PATCH /api/v1/tenants/{tenant_id}/members/{membership_id}/
         Requires Tenant Admin or Platform Admin privileges.
         """
-        tid = self._resolve_tenant_id(tenant_id)
+        tid = self._explicit_tenant_id(tenant_id) or self.current_tenant_id()
         if not membership_id or not str(membership_id).strip():
             raise NovaValidationError("membership_id must be a non-empty string.")
         try:
@@ -176,7 +207,7 @@ class TenantMembershipsResource(BaseResource):
         Endpoint: DELETE /api/v1/tenants/{tenant_id}/members/{membership_id}/
         Requires Tenant Admin or Platform Admin privileges.
         """
-        tid = self._resolve_tenant_id(tenant_id)
+        tid = self._explicit_tenant_id(tenant_id) or self.current_tenant_id()
         if not membership_id or not str(membership_id).strip():
             raise NovaValidationError("membership_id must be a non-empty string.")
         try:
@@ -207,27 +238,60 @@ class TenantsResource(BaseResource):
         self._client = client
         self.memberships = TenantMembershipsResource(transport, client)
 
-    def _resolve_tenant_id(self, tenant_id: str | None) -> str:
+    def _explicit_tenant_id(self, tenant_id: str | None) -> str | None:
+        """The tenant the caller named (argument, then client default), validated; ``None`` if neither is set."""
         tid = tenant_id or self._transport.config.tenant_id
         if not tid or not str(tid).strip():
-            raise NovaValidationError(
-                "tenant_id must be provided or configured on the client."
-            )
+            return None
         try:
             return str(uuid.UUID(str(tid).strip()))
         except (ValueError, AttributeError) as exc:
             raise NovaValidationError(f"Invalid UUID for tenant_id: {tid!r}") from exc
 
+    def current_tenant_id(self) -> str:
+        """Return the id of the tenant these credentials resolve to.
+
+        Uses the client's default tenant when one is configured; otherwise asks the server
+        (``GET /api/v1/auth/me/``), which applies its own rule: the caller's first active membership.
+        This is what lets an application that only knows the server URL and an API key call
+        tenant-scoped operations.
+        """
+        explicit = self._explicit_tenant_id(None)
+        if explicit:
+            return explicit
+        response = self._transport.request("GET", "auth/me/")
+        current = (response.data or {}).get("current_tenant") or {}
+        found = current.get("id")
+        if not found:
+            raise NovaValidationError(
+                "The server did not report a current tenant for these credentials; pass tenant_id explicitly."
+            )
+        try:
+            return str(uuid.UUID(str(found)))
+        except (ValueError, AttributeError) as exc:
+            raise NovaValidationError(
+                f"The server reported an invalid current tenant id: {found!r}"
+            ) from exc
+
     def list(
         self,
         *,
+        page: int | None = None,
+        page_size: int | None = None,
         params: Mapping[str, Any] | None = None,
     ) -> PaginatedResponse[Tenant]:
         """List active tenant organizations accessible to the authenticated user.
 
         Endpoint: GET /api/v1/tenants/
         """
-        response = self._transport.request("GET", "tenants/", params=params)
+        query_params: dict[str, Any] = dict(params or {})
+        if page is not None:
+            query_params["page"] = page
+        if page_size is not None:
+            query_params["page_size"] = page_size
+        response = self._transport.request(
+            "GET", "tenants/", params=query_params or None
+        )
         return PaginatedResponse.from_response(response, item_parser=Tenant.from_dict)
 
     def create(
@@ -274,7 +338,7 @@ class TenantsResource(BaseResource):
         Endpoint: GET /api/v1/tenants/{tenant_id}/
         Requires membership in the tenant organization.
         """
-        tid = self._resolve_tenant_id(tenant_id)
+        tid = self._explicit_tenant_id(tenant_id) or self.current_tenant_id()
         response = self._transport.request("GET", f"tenants/{tid}/")
         return parse_model(Tenant, response.data or {})
 
@@ -292,7 +356,7 @@ class TenantsResource(BaseResource):
         Endpoint: PATCH /api/v1/tenants/{tenant_id}/
         Requires Tenant Admin or Platform Admin privileges.
         """
-        tid = self._resolve_tenant_id(tenant_id)
+        tid = self._explicit_tenant_id(tenant_id) or self.current_tenant_id()
 
         payload: dict[str, Any] = {}
         if name is not None:
@@ -313,7 +377,11 @@ class TenantsResource(BaseResource):
         Endpoint: DELETE /api/v1/tenants/{tenant_id}/
         Requires Tenant Admin or Platform Admin privileges.
         """
-        tid = self._resolve_tenant_id(tenant_id)
+        tid = self._explicit_tenant_id(tenant_id)
+        if tid is None:
+            raise NovaValidationError(
+                "tenant_id is required to delete a tenant; it is never inferred from the credentials."
+            )
         self._transport.request("DELETE", f"tenants/{tid}/")
 
     # Member shortcut conveniences forwarding to memberships sub-resource
@@ -321,10 +389,14 @@ class TenantsResource(BaseResource):
         self,
         tenant_id: str | None = None,
         *,
+        page: int | None = None,
+        page_size: int | None = None,
         params: Mapping[str, Any] | None = None,
     ) -> PaginatedResponse[Membership]:
         """Shortcut for client.tenants.memberships.list()."""
-        return self.memberships.list(tenant_id=tenant_id, params=params)
+        return self.memberships.list(
+            tenant_id=tenant_id, page=page, page_size=page_size, params=params
+        )
 
     def add_member(
         self,
