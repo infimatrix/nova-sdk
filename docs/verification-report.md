@@ -367,6 +367,12 @@ render and webhook creation return typed fields (`subject`, `html_content`, `sec
 `for await` walks the tenant and API-key lists. A server-side audit afterwards found 0 leftover test objects, no active
 test API keys, and only the SES provider that was added on request.
 
+Re-test on the merged `main` (2026-11-02, single `ci.yml`, dependency bumps from PR 25): the same live run, again with only a
+server URL and an API key. Python 106 PASS + 1 PASS after retry, TypeScript 103 + 2, Java 104 + 1, **0 FAIL**. The
+retried steps are all the known eventual-consistency case (a write that references an object created moments earlier
+answers 400 `Invalid pk ... does not exist`, then succeeds). 6 of 6 emails per SDK were DELIVERED through SES, and a
+server audit found 0 leftover test objects; the SES provider remains.
+
 Limits of the lookup (L1): it relies on the server's `current_tenant` for the credentials. It was exercised with an account
 that has **one** tenant. For an account in several tenants the SDK takes whatever the server reports (documented as the
 first active membership); that case is NOT VERIFIED.
