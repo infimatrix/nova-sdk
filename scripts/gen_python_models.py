@@ -15,7 +15,7 @@ import keyword
 import sys
 from pathlib import Path
 
-import yaml
+from _overlay import load_spec
 
 ROOT = Path(__file__).resolve().parent.parent
 SPEC = ROOT / "openapi" / "nova-api.yaml"
@@ -128,7 +128,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    out = render(yaml.safe_load(SPEC.read_text()))
+    out = render(load_spec())
     if args.check:
         if not TARGET.exists() or TARGET.read_text() != out:
             print(

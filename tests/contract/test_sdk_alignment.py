@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import importlib.util
+import sys
 from pathlib import Path
 
 import pytest
 
 SCRIPTS = Path(__file__).resolve().parents[2] / "scripts"
+sys.path.insert(0, str(SCRIPTS))  # the generators import their shared overlay loader
 
 
 def _load(name: str):
@@ -16,6 +18,8 @@ def _load(name: str):
     spec.loader.exec_module(module)
     return module
 
+
+import _overlay  # noqa: E402
 
 coverage = _load("check_sdk_coverage")
 models_gen = _load("gen_python_models")
@@ -46,26 +50,20 @@ def test_exclusions_reference_real_operations():
 
 
 def test_generated_python_models_are_current():
-    import yaml
-
-    expected = models_gen.render(yaml.safe_load(models_gen.SPEC.read_text()))
+    expected = models_gen.render(_overlay.load_spec())
     assert models_gen.TARGET.read_text() == expected, (
         "sdks/python/src/nova_sdk/schemas.py is stale; run scripts/gen_python_models.py"
     )
 
 
 def test_generated_typescript_types_are_current():
-    import yaml
-
-    expected = ts_gen.render(yaml.safe_load(ts_gen.SPEC.read_text()))
+    expected = ts_gen.render(_overlay.load_spec())
     assert ts_gen.TARGET.read_text() == expected, (
         "sdks/typescript/src/schemas.ts is stale; run scripts/gen_ts_types.py"
     )
 
 
 def test_generated_java_models_are_current():
-    import yaml
-
-    expected = java_gen.render_all(yaml.safe_load(java_gen.SPEC.read_text()))
+    expected = java_gen.render_all(_overlay.load_spec())
     actual = {p.name: p.read_text() for p in java_gen.OUT.glob("*.java")}
     assert actual == expected, "sdks/java generated models are stale; run scripts/gen_java_models.py"

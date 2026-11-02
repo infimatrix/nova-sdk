@@ -175,6 +175,10 @@ def test_webhooks_create_success(mock_client_factory):
     assert res["id"] == VALID_WEBHOOK_ID
     assert res["name"] == "CRM Delivery Listener"
     assert res["secret"] == "whsec_newsecret1234567890abcdef1234"
+    # typed access: the signing secret is only returned on creation, so it must be readable as an attribute
+    assert res.secret == "whsec_newsecret1234567890abcdef1234"
+    assert res.secret_masked.startswith("whsec_")
+    assert res.created_at == "2026-10-24T12:00:00Z"
     assert captured_payload["name"] == "CRM Delivery Listener"
     assert captured_payload["url"] == "https://crm.example.com/nova-events"
     assert captured_payload["events"] == ["email.delivered", "email.bounced"]

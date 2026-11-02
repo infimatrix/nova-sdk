@@ -262,6 +262,9 @@ def test_templates_render_success(mock_client_factory):
     assert captured_body == {"variables": {"userName": "Swaraj"}}
     assert result["subject"] == "Welcome, Swaraj!"
     assert result["html_content"] == "<p>Hello Swaraj</p>"
+    # typed access, not only the raw mapping: the contract used to describe the request body here
+    assert result.subject == "Welcome, Swaraj!"
+    assert result.html_content == "<p>Hello Swaraj</p>"
 
 
 def test_templates_tenant_isolation(mock_client_factory):

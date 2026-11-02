@@ -7,8 +7,8 @@ import com.infimatrix.nova.http.HttpMethod;
 import com.infimatrix.nova.http.HttpTransport;
 import com.infimatrix.nova.models.PatchedTemplateRequest;
 import com.infimatrix.nova.models.Template;
-import com.infimatrix.nova.models.TemplateRender;
 import com.infimatrix.nova.models.TemplateRenderRequest;
+import com.infimatrix.nova.models.TemplateRenderResult;
 import com.infimatrix.nova.models.TemplateRequest;
 import com.infimatrix.nova.models.TemplateStatusEnum;
 import java.util.Map;
@@ -50,9 +50,9 @@ public final class TemplatesApi {
     }
 
     /** {@code POST /api/v1/templates/{id}/render/}: renders with variable values. */
-    public TemplateRender render(String templateId, Map<String, Object> variables) {
+    public TemplateRenderResult render(String templateId, Map<String, Object> variables) {
         return http.send(ApiRequest.of(HttpMethod.POST, "templates/{}/render/", Validate.nonBlank(templateId, "templateId"))
-                .json(new TemplateRenderRequest(variables == null ? Map.of() : variables)), TemplateRender.class);
+                .json(new TemplateRenderRequest(variables == null ? Map.of() : variables)), TemplateRenderResult.class);
     }
 
     /** Sets a template's status to {@code ACTIVE}. */
