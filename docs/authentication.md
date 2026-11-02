@@ -16,14 +16,21 @@ to `login`/`register` to store the access token on the client.
 
 ## Tenancy
 
-A user can belong to several tenants (workspaces). The SDK sends `X-Tenant-ID`:
+A user can belong to several tenants (workspaces). **You do not need to know a tenant id to use the SDK**: with only the
+server URL and an API key, the server uses the caller's first active membership. The SDK sends `X-Tenant-ID` only when
+you ask it to:
 
 - from the client default (`tenant_id` / `tenantId` option or `NOVA_TENANT_ID`), or
 - per call (`tenant_id=` / `{ tenantId }`), which overrides the default.
 
-If the header is omitted the server uses the caller's first active membership. If it names a tenant the
-caller does not belong to, tenant-scoped endpoints fail with 403/400. Tenant IDs are validated as UUIDs
-client-side.
+If the header names a tenant the caller does not belong to, tenant-scoped endpoints fail with 403/400. Tenant IDs are
+validated as UUIDs client-side.
+
+A few operations put the tenant in the URL path (`/tenants/{tenant_id}/...`: workspace details and the member list and
+member management). When no tenant is named, the SDK asks the server which tenant the credentials resolve to
+(`GET /api/v1/auth/me/`, field `current_tenant`) and uses that, so these work with just a URL and a key too.
+`current_tenant_id()` / `currentTenantId()` returns it. **Deleting a workspace is the one exception: the id must always
+be passed (or configured) explicitly and is never inferred.**
 
 Concurrency: mutating the shared default tenant (`set_tenant_id` / `setTenantId`) affects every in-flight task
 using the client. Prefer per-call overrides, or in TypeScript `client.withTenant(id)`, which returns an

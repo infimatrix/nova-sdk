@@ -1,14 +1,15 @@
 # Getting started
 
-Every SDK needs three things: the API **base URL**, a **credential** (API key or JWT) and, for tenant-scoped
-endpoints, a **tenant ID**. All of them can come from environment variables:
+Every SDK needs two things: the address of your Nova server (**base URL**) and a **credential** (API key or JWT).
+That is all: you do not need a tenant (workspace) id, because the server uses your first active workspace. Both values can
+come from environment variables:
 
 | Variable | Meaning |
 |---|---|
 | `NOVA_BASE_URL` | API origin, e.g. `https://api.example.com` (a trailing `/api/v1` is accepted) |
 | `NOVA_API_KEY` | API key (`nova_key_…`), created via `POST /api/v1/auth/api-keys/` |
 | `NOVA_ACCESS_TOKEN` | JWT from `POST /api/v1/auth/login/` |
-| `NOVA_TENANT_ID` | Default tenant UUID sent as `X-Tenant-ID` |
+| `NOVA_TENANT_ID` | *Optional.* Workspace UUID sent as `X-Tenant-ID`, only to choose between several workspaces you belong to |
 
 ## Python
 

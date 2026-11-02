@@ -43,7 +43,7 @@ npm install @infimatrix/nova-sdk
 ```ts
 import { NovaClient } from "@infimatrix/nova-sdk";
 
-const nova = new NovaClient();                   // reads NOVA_BASE_URL, NOVA_API_KEY, NOVA_TENANT_ID
+const nova = new NovaClient();                   // reads NOVA_BASE_URL and NOVA_API_KEY
 const email = await nova.emails.send({
   recipient_email: "ada@example.com", subject: "Welcome!", html_content: "<h1>Hi</h1>",
 });

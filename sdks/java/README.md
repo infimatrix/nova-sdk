@@ -38,7 +38,6 @@ import com.infimatrix.nova.models.SendEmailRequest;
 NovaClient nova = NovaClient.builder()
         .baseUrl("https://nova.example.com")
         .apiKey(System.getenv("NOVA_API_KEY"))
-        .tenantId("00000000-0000-0000-0000-000000000001")
         .build();
 
 var email = nova.emails().send(SendEmailRequest.builder()
@@ -61,7 +60,7 @@ Use the SDK from server-side code. API keys and tokens are secrets and must not 
 | `baseUrl` | env `NOVA_BASE_URL`, else `http://localhost:8000` | API origin; a trailing `/api/v1` is stripped |
 | `apiKey` | env `NOVA_API_KEY` | `nova_key_…`; wins over `accessToken` |
 | `accessToken` | env `NOVA_ACCESS_TOKEN` | JWT access token |
-| `tenantId` | env `NOVA_TENANT_ID` | default `X-Tenant-ID` |
+| `tenantId` | env `NOVA_TENANT_ID` | **Optional** default `X-Tenant-ID`; when omitted the server uses your first active workspace and calls that need the id in the path (`tenants().memberships().list(null, ...)`) look it up (`tenants().currentTenantId()`). `tenants().delete(null)` never infers it |
 | `connectTimeout` | 10 s | connect timeout (ignored with a custom `HttpClient`) |
 | `requestTimeout` | 30 s | per-attempt timeout |
 | `maxRetries` | 3 | retries of `GET` requests (0–10) |

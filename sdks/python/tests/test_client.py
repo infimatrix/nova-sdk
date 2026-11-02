@@ -11,12 +11,12 @@ from nova_sdk import NovaClient, NovaConfig
 
 def test_client_initialization_with_args():
     client = NovaClient(
-        base_url="https://api.novamail.io",
+        base_url="https://nova.example.test",
         api_key="nova_key_test123",
         tenant_id="11111111-1111-1111-1111-111111111111",
         timeout=15.0,
     )
-    assert client.config.base_url == "https://api.novamail.io"
+    assert client.config.base_url == "https://nova.example.test"
     assert client.config.api_key == "nova_key_test123"
     assert client.tenant_id == "11111111-1111-1111-1111-111111111111"
     assert client.config.timeout == 15.0
@@ -25,7 +25,7 @@ def test_client_initialization_with_args():
 
 def test_client_initialization_with_config_object():
     config = NovaConfig(
-        base_url="https://api.novamail.io",
+        base_url="https://nova.example.test",
         api_key="nova_key_test123",
     )
     client = NovaClient(config=config)

@@ -75,7 +75,7 @@ cd sdks/java && mvn install     # into ~/.m2 only
 import com.infimatrix.nova.NovaClient;
 import com.infimatrix.nova.models.SendEmailRequest;
 
-NovaClient nova = NovaClient.builder().build();   // reads NOVA_BASE_URL, NOVA_API_KEY, NOVA_TENANT_ID
+NovaClient nova = NovaClient.builder().build();   // reads NOVA_BASE_URL and NOVA_API_KEY
 var email = nova.emails().send(SendEmailRequest.builder()
         .recipientEmail("ada@example.com").subject("Welcome!").htmlContent("<h1>Hi</h1>").build());
 System.out.println(email.messageId() + " " + email.status());

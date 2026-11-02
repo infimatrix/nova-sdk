@@ -358,20 +358,20 @@ def test_transactional_send_test_success(mock_client_factory):
         VALID_NOTIFICATION_ID,
         recipient_email="test.recipient@example.com",
         from_name="Nova Alerts",
-        sender_email="alerts@novamail.io",
+        sender_email="alerts@example.com",
         provider_id="77777777-7777-7777-7777-777777777777",
         cc_emails="cc@example.com",
         bcc_emails="bcc@example.com",
-        reply_to="support@novamail.io",
+        reply_to="support@example.com",
     )
 
     assert captured_body["recipient_email"] == "test.recipient@example.com"
     assert captured_body["from_name"] == "Nova Alerts"
-    assert captured_body["sender_email"] == "alerts@novamail.io"
+    assert captured_body["sender_email"] == "alerts@example.com"
     assert captured_body["provider_id"] == "77777777-7777-7777-7777-777777777777"
     assert captured_body["cc_emails"] == "cc@example.com"
     assert captured_body["bcc_emails"] == "bcc@example.com"
-    assert captured_body["reply_to"] == "support@novamail.io"
+    assert captured_body["reply_to"] == "support@example.com"
     assert "queued" in resp["message"]
     assert resp["message_id"] == "MSG042"
     assert resp["email_id"] == "66666666-6666-6666-6666-666666666666"

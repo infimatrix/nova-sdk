@@ -39,3 +39,20 @@ Only `GET`/`HEAD`/`OPTIONS` are retried automatically — on 429, 502, 503, 504,
 with exponential backoff and jitter; `Retry-After` is honoured and capped at 30 seconds. `POST`, `PUT`, `PATCH`
 and `DELETE` are **never** retried, because a lost response does not mean a lost request (an email may already be
 queued). After a failed dispatch, inspect the delivery logs before retrying yourself.
+
+## Things that look like errors but are server behaviour
+
+* **A write that references something you just created can fail once.** On the development server used for testing,
+  `POST /campaigns/transactional/` with a `template_id`, or a file upload with a `folder`, created moments earlier, answered
+  `400 Invalid pk "…" - object does not exist` and succeeded 0.5-2.5 seconds later. The SDKs never retry a 400 or any
+  non-idempotent request; if your code creates an object and immediately references it, retry that second call yourself
+  after a short pause (and give up after a few seconds).
+* **"Queued" is not "delivered".** `emails.send`, `bulk_send`, `group_send` and the test-send calls return as soon as the
+  server accepts the mail (status `PROCESSING`). Delivery happens afterwards: without a configured, active mail provider
+  the mail ends `FAILED` in the email logs. Create a provider (`providers.create`) first and check `emails.list_logs()`.
+* **Some endpoints need a higher role.** For example `users.list` answers 403 for a workspace administrator that is not a
+  platform administrator. That is a `NovaPermissionError`, not a bug in the SDK.
+* **A failed login answers 400**, so it surfaces as `NovaValidationError`, not `NovaAuthenticationError` (401 is used for
+  bad or expired credentials on other endpoints).
+* **Secrets are shown once.** A webhook's signing secret is returned by `webhooks.create` (`secret`) and
+  `webhooks.rotate_secret`; the raw API key is returned only by `auth.create_api_key`. Store them immediately.

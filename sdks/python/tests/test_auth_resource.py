@@ -29,7 +29,7 @@ def test_auth_login_success(mock_client_factory):
                 "refresh": "jwt_refresh_456",
                 "user": {
                     "id": "11111111-1111-1111-1111-111111111111",
-                    "email": "user@novamail.io",
+                    "email": "user@example.com",
                     "username": "novauser",
                 },
                 "tenants": [
@@ -44,17 +44,17 @@ def test_auth_login_success(mock_client_factory):
         )
 
     client = mock_client_factory(handler)
-    result = client.auth.login(email="user@novamail.io", password="supersecretpassword")
+    result = client.auth.login(email="user@example.com", password="supersecretpassword")
 
     assert captured_request["method"] == "POST"
     assert captured_request["path"] == "/api/v1/auth/login/"
     assert captured_request["body"] == {
-        "email": "user@novamail.io",
+        "email": "user@example.com",
         "password": "supersecretpassword",
     }
     assert result["access"] == "jwt_access_123"
     assert result["refresh"] == "jwt_refresh_456"
-    assert result["user"]["email"] == "user@novamail.io"
+    assert result["user"]["email"] == "user@example.com"
     # By default, client auth token should not be mutated
     assert client.config.access_token is None
 
@@ -72,7 +72,7 @@ def test_auth_login_with_set_current_token(mock_client_factory):
 
     client = mock_client_factory(handler)
     client.auth.login(
-        email="user@novamail.io",
+        email="user@example.com",
         password="password123",
         set_current_token=True,
     )
