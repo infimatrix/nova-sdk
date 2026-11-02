@@ -5,7 +5,7 @@
 
   <groupId>com.infimatrix</groupId>
   <artifactId>nova-sdk</artifactId>
-  <version>0.1.0</version>
+  <version>0.2.0</version>
   <packaging>jar</packaging>
 
   <name>Nova SDK for Java</name>
@@ -42,6 +42,8 @@
     <junit.version>5.14.4</junit.version>
     <jqwik.version>1.10.2</jqwik.version>
     <jacoco.minimum.line>0.85</jacoco.minimum.line>
+    <!-- Nothing is deployed unless the artifact-registry profile is chosen explicitly. -->
+    <maven.deploy.skip>true</maven.deploy.skip>
   </properties>
 
   <dependencies>
@@ -225,6 +227,59 @@
     </plugins>
   </build>
   <profiles>
+    <!-- Publish to Google Cloud Artifact Registry (Maven). Opt in with -Partifact-registry and name the target, e.g.
+         mvn -B deploy -Partifact-registry -Dar.project=<PROJECT> -Dar.location=<LOCATION> -Dar.repository=<REPOSITORY>
+         Credentials come from the <server id="artifact-registry"> entry of your own ~/.m2/settings.xml; none live here. -->
+    <profile>
+      <id>artifact-registry</id>
+      <properties>
+        <maven.deploy.skip>false</maven.deploy.skip>
+      </properties>
+      <distributionManagement>
+        <repository>
+          <id>artifact-registry</id>
+          <url>https://${ar.location}-maven.pkg.dev/${ar.project}/${ar.repository}</url>
+        </repository>
+      </distributionManagement>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-enforcer-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>require-registry-target</id>
+                <phase>validate</phase>
+                <goals><goal>enforce</goal></goals>
+                <configuration>
+                  <rules>
+                    <requireProperty>
+                      <property>ar.project</property>
+                      <message>Set -Dar.project=&lt;PROJECT&gt;</message>
+                      <regex>[a-z][a-z0-9-]{4,}[a-z0-9]</regex>
+                      <regexMessage>ar.project must be a Google Cloud project id</regexMessage>
+                    </requireProperty>
+                    <requireProperty>
+                      <property>ar.location</property>
+                      <message>Set -Dar.location=&lt;LOCATION&gt;</message>
+                      <regex>[a-z]+(-[a-z]+[0-9]+)?</regex>
+                      <regexMessage>ar.location must be a region such as europe-west1</regexMessage>
+                    </requireProperty>
+                    <requireProperty>
+                      <property>ar.repository</property>
+                      <message>Set -Dar.repository=&lt;REPOSITORY&gt;</message>
+                      <regex>[a-z][a-z0-9-]*</regex>
+                      <regexMessage>ar.repository must be a repository id</regexMessage>
+                    </requireProperty>
+                  </rules>
+                  <fail>true</fail>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
     <!-- Mutation testing of the handwritten transport code: mvn -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage -->
     <profile>
       <id>mutation</id>
