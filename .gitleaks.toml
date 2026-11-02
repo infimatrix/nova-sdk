@@ -13,5 +13,6 @@ regexTarget = "match"
 regexes = [
   '''nova_key_(test|live|sensitive|TOPSECRET|abc|x)[A-Za-z0-9_]*''',
   '''tok_TOPSECRET_[0-9a-f]+''',
+  '''e1ac16da4cace73e8d3033697eb726ede219a897d9f3f6d3e46d2d34e390f1d1''',  # SHA-256 of the synthetic secret "whsec_abc" (one earlier commit)
   '''whsec_(newsecret)?[0-9a-f]{16,}[A-Za-z0-9]*''',
 ]
