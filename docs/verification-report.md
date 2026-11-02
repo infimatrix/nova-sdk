@@ -6,7 +6,7 @@ output, produced on 2026-10-26/28 on one Linux workstation (Python 3.14.4, Node 
 Maven 3.9.9). The plan this report answers is [verification-plan.md](verification-plan.md).
 
 **This report does not say the SDKs are production-ready.** It says what was checked, what the checks found, and what
-nobody has checked yet (see [Not verified](#not-verified)). No check in this repository touched the live Nova backend.
+nobody has checked yet (see [Not verified](#not-verified)). The automated checks in sections 2-10 never touched a live Nova backend; section 12 reports a separate manual end-to-end run against a development server.
 
 ## 1. Summary
 
@@ -17,7 +17,8 @@ nobody has checked yet (see [Not verified](#not-verified)). No check in this rep
 | Defects found in existing SDK code | **3** (all fixed, each with regression tests that fail on the old source) |
 | Test-suite weaknesses found by mutation testing | retry timing, `Retry-After`, 3xx/2xx boundaries and error-field propagation were not pinned; now covered |
 | Injected defects detected by the cross-language suite | 22 of 22 (plus 3 equivalent ones masked by a second layer) |
-| Live backend, TLS, CodeQL, JDK 21 / Node 18 / Python 3.10-3.13 runs | **NOT RUN / NOT VERIFIED** (section 11) |
+| Live end-to-end run of all three SDKs against a development server, with real SES delivery | **PASS with findings** (section 12) |
+| TLS, CodeQL, JDK 21 / Node 18 / Python 3.10-3.13 runs, production backend | **NOT RUN / NOT VERIFIED** (section 11) |
 
 ### Defects found in the existing SDKs
 
@@ -159,7 +160,7 @@ supported by the mutation results and by the injected path-id defect (PY-8, JV-7
 Not covered by properties: whitespace handling of ids can differ between languages for exotic characters (Python `str.strip`,
 JavaScript `trim` and Java `String.strip` use different definitions of whitespace, for example for U+00A0 and U+FEFF;
 reasoned from the language documentation, **not tested**). The docs only say "non-empty", so no
-expectation was invented ([Open questions](#12-open-questions-needing-a-decision)).
+expectation was invented ([Open questions](#13-open-questions-needing-a-decision)).
 
 ## 7. Mutation testing
 
@@ -267,7 +268,7 @@ Full behaviour list and sources: [verification-plan.md](verification-plan.md). `
 
 | Area | Status | Why / what would close it |
 |---|---|---|
-| Behaviour against the live Nova backend (responses, real error shapes, pagination of every endpoint) | NOT VERIFIED | no backend instance or credentials were used; needs an integration environment |
+| Behaviour against the **production** backend, other tenants/roles (platform admin), SES production limits | NOT VERIFIED | section 12 covers one development server and one tenant-admin account only |
 | TLS certificate verification on by default | NOT VERIFIED | Python's config sets `verify_ssl=True` by default (read, not tested); TypeScript and Java rely on platform defaults; no test serves an invalid certificate |
 | Request cancellation (TypeScript `AbortSignal`, Java interrupt, Python task cancel) | NOT RUN | not part of the conformance suite; pre-existing unit tests exist per SDK |
 | Multipart uploads, CSV exports, file downloads end to end | NOT RUN here | covered by pre-existing per-SDK tests only |
@@ -279,7 +280,64 @@ Full behaviour list and sources: [verification-plan.md](verification-plan.md). `
 | Large responses, high concurrency, memory | NOT RUN | not in scope of local checks |
 | Mutation coverage of resources/models | NOT RUN | excluded (generated or declarative) |
 
-## 12. Open questions needing a decision
+## 12. Live end-to-end run against a development server
+
+A manual run, outside CI, on 2026-11-02. The server URL and the account were supplied by the project owner and are not
+recorded here (the repository is public). Credentials were passed through environment variables only; nothing secret was
+written to a file, the repository or a log, and the output of the scripts was redacted. The scripts are not part of the
+repository (they create real data and send real mail); the steps they perform are listed below so the run can be repeated.
+
+**Method.** Phase 1 logs in with email and password and creates an API key. Phase 2 builds a **new client with only the
+server URL and that API key (no tenant id)** and exercises every resource. Phase 3 deletes everything the run created,
+revokes the key and logs out. A tenant-admin account with one tenant was used. An AWS SES provider
+(region ap-south-1, one verified sender) was added to the tenant through `providers.create`, at the owner's request, and was
+left in place; emails were sent only to plus-tagged variants of the owner's own address.
+
+**Contract drift check.** `sync_openapi.py --check` against the server's live schema reports all 102 operations as "differs",
+but the set of operations is identical (102 vs 102, none added or removed); the differences are descriptions, duplicated
+security entries and the wording of some response schemas.
+
+| SDK | Steps | PASS | PASS after retry | FAIL | NOT RUN |
+|---|---|---|---|---|---|
+| Python | 102 | 102 | 0 | 0 | 0 |
+| TypeScript | 101 | 98 | 1 | 2 (the script reported two checks as FAIL because it did not mark the SDK's correct "tenant id required" error as expected; the SDK behaved exactly like Python and Java there, finding L1; the script was corrected afterwards but not re-run) | 0 |
+| Java | 100 | 98 | 1 | 1 (`templates.render`, finding L3) | 0 |
+
+(An earlier run before the provider existed gave 91/90/90 passes and left providers and real delivery NOT RUN.)
+
+Covered in every SDK: login, refresh (the server rotates the refresh token), API-key create/list/revoke, `auth.me`, users,
+tenants (list, get, create, update, delete, members), templates (create, get, list with search, update, render, activate,
+archive, delete), contacts (create, get, search, update, activity, duplicate rejection, CSV sample, bulk upload, groups
+create/get/update/list/delete), providers (list, types, get, test, create, update, delete), emails (send, send from a template,
+bulk send, group send, logs, preview, CSV export), webhooks (events, create, get, list, update, rotate secret, test, delete),
+transactional campaigns (create, get, list, update, test send, delete), analytics, audit logs and stats, asset folders and
+files (upload, update, delete), pagination across more than one real page, wrong or revoked API key (401), unknown id (404),
+invalid and foreign tenant ids. After the run a server-side audit found **0 leftover test objects** and no active test API keys.
+
+**Email.** With the SES provider in place every email sent by each run (send, send from a template, bulk send, group send,
+provider test, campaign test) ended `DELIVERED`: 6 of 6 for each of the three SDKs, asserted by the script after waiting
+15 s. Before the provider existed the same calls were accepted by the API and then ended `FAILED`, so the API's "queued"
+answer says nothing about delivery. The provider response did not contain the AWS secret access key (asserted); it does
+contain the access-key id, which the contract declares.
+
+### Findings from the live run
+
+| # | Finding | Type | Affects |
+|---|---|---|---|
+| L1 | Setup of only URL + API key works: the server resolves the tenant itself and `auth.me()` returns it. The only calls that still demand a tenant id are the six `/tenants/{tenant_id}/members/...` operations, where all three SDKs raise a client error unless an id is passed. The id is obtainable from `auth.me()` or `tenants.list()`. | design gap | all |
+| L2 | **Eventual consistency on the dev server.** A write that references an object created moments earlier (campaign `template_id`, file upload `folder`) answers `400 Invalid pk ... does not exist` on the first attempt and succeeds 0.5-2.5 s later (on every one of more than 20 observations across the runs). The SDKs behave correctly (a 400 is never retried); callers who create-then-reference need their own short retry. One early Python run also failed on a template several minutes old, which was not explained. | server behaviour | all |
+| L3 | **The API contract is wrong in three places**, and typed Java models silently drop the data: `templates/{id}/render` documents its response `data` as `TemplateRender` (the request body `{variables}`) while the server returns `subject` and `html_content` (Java returns an empty object); `POST /webhooks/` returns `secret`, `secret_masked`, `created_at`, `updated_at`, none declared (the Java record has no `secret`, so the signing secret cannot be read); `logout` returns an undeclared `message`. Python keeps the raw payload and TypeScript returns plain objects, so they still expose the data. Found by comparing the declared fields of 22 typed models with real responses. Needs a fix in the backend's contract, then regeneration. | contract defect | Java (data loss), Python/TypeScript (types wrong) |
+| L4 | Python `tenants.list()`, `tenants.list_members()` and `auth.list_api_keys()` accept only `params=`, not `page` / `page_size`, so `iter_items(client.tenants.list)` raises `TypeError`. This contradicts the convention that every list method accepts them; TypeScript and Java do. | SDK defect | Python |
+| L5 | `users.list` answers 403 for a tenant-admin account (probably platform-admin only); not an SDK defect. A failed login answers 400, not 401. | server behaviour | all |
+| L6 | The mail provider's absence is invisible at send time (see Email above); `emails.send` answers `PROCESSING` and the failure appears only in the logs. | server behaviour | all |
+
+None of L1-L6 was changed in code. L1, L3 and L4 are candidates for SDK changes; L3 also needs the backend.
+
+Limits of this run: one server, one tenant, one tenant-admin account, one SES identity (ap-south-1); no platform-admin
+operations; no load; webhook delivery was only triggered towards a reserved example domain and its result was not
+inspected; SES behaviour outside this sender and region, including sandbox limits, is unknown.
+
+## 13. Open questions needing a decision
 
 None of these was changed, because the documentation does not decide them.
 
@@ -292,7 +350,7 @@ None of these was changed, because the documentation does not decide them.
    of the computed backoff in Python and TypeScript; not specified in the docs.
 5. Backoff floor of 50 ms (all SDKs) is client policy, not documented.
 
-## 13. Commands
+## 14. Commands
 
 ```bash
 scripts/verify_all.sh [workdir]            # everything in section 3, 9 and part of 8, from a clean copy
@@ -301,7 +359,7 @@ python tests/conformance/inject_defects.py --python-env <python with httpx, with
 scripts/mutation/run_python.sh | run_typescript.sh | run_java.sh
 ```
 
-## 14. Commits
+## 15. Commits
 
 See `git log` on branch `sdk-verification-hardening`; the commit list is also in the final report of the work session.
 No package was published, no registry upload, deployment, release or tag was made, and no workflow was triggered.
