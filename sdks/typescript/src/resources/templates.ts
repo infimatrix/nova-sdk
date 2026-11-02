@@ -3,7 +3,7 @@ import type { Page } from "../models.js";
 import type {
   PatchedTemplateRequest,
   Template,
-  TemplateRender,
+  TemplateRenderResult,
   TemplateRequest,
   TemplateStatusEnum,
 } from "../schemas.js";
@@ -52,8 +52,8 @@ export class TemplatesResource extends BaseResource {
     templateId: string,
     variables: Record<string, unknown> = {},
     options: RequestOptions = {},
-  ): Promise<TemplateRender> {
-    const res = await this.http.request<TemplateRender>("POST", `templates/${pathId(templateId, "templateId")}/render/`, {
+  ): Promise<TemplateRenderResult> {
+    const res = await this.http.request<TemplateRenderResult>("POST", `templates/${pathId(templateId, "templateId")}/render/`, {
       ...options,
       json: { variables },
     });

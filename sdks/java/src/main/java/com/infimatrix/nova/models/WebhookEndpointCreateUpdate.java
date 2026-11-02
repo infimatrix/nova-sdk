@@ -16,6 +16,10 @@ import java.util.List;
  * @param url JSON property url.
  * @param events JSON property events. Optional.
  * @param isActive JSON property is_active. Optional.
+ * @param secret Signing secret of the webhook endpoint, returned when it is created. Optional.
+ * @param secretMasked JSON property secret_masked. Optional.
+ * @param createdAt JSON property created_at. Optional.
+ * @param updatedAt JSON property updated_at. Optional.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -24,6 +28,10 @@ public record WebhookEndpointCreateUpdate(
     @JsonProperty("name") String name,
     @JsonProperty("url") String url,
     @JsonProperty("events") List<String> events,
-    @JsonProperty("is_active") Boolean isActive
+    @JsonProperty("is_active") Boolean isActive,
+    @JsonProperty("secret") String secret,
+    @JsonProperty("secret_masked") String secretMasked,
+    @JsonProperty("created_at") String createdAt,
+    @JsonProperty("updated_at") String updatedAt
 ) {
 }

@@ -1,0 +1,47 @@
+# Corrections the SDK generators apply on top of the committed snapshot (openapi/nova-api.yaml).
+#
+# The snapshot stays an exact copy of the backend's published contract. Where a real server response was observed to
+# differ from that contract, the correction lives here, with its evidence, until the backend fixes the contract:
+# tests/contract/test_overlay.py FAILS when an entry is already satisfied by the snapshot, so a fixed backend
+# contract makes the stale entry visible and it can be deleted.
+#
+# Supported keys: add_schemas (new component schemas) and add_properties (extra properties on an existing schema).
+# Nothing here changes request shapes, paths or operations.
+
+add_schemas:
+  TemplateRenderResult:
+    evidence: >-
+      POST /api/v1/templates/{id}/render/ returned {"subject": "...", "html_content": "..."} (development server,
+      2026-11-02, docs/verification-report.md section 12). The snapshot documents the response data as TemplateRender,
+      which is the request body ({variables}), so typed clients lost the rendered output.
+    schema:
+      type: object
+      description: Rendered subject and HTML of a template.
+      properties:
+        subject:
+          type: string
+        html_content:
+          type: string
+
+add_properties:
+  WebhookEndpointCreateUpdate:
+    evidence: >-
+      POST /api/v1/webhooks/ returned secret, secret_masked, created_at and updated_at in addition to the declared
+      fields (development server, 2026-11-02). Without them a typed client cannot read the signing secret.
+    properties:
+      secret:
+        type: string
+        description: Signing secret of the webhook endpoint, returned when it is created.
+      secret_masked:
+        type: string
+      created_at:
+        type: string
+        format: date-time
+      updated_at:
+        type: string
+        format: date-time
+  Logout:
+    evidence: POST /api/v1/auth/logout/ returned a "message" field (development server, 2026-11-02).
+    properties:
+      message:
+        type: string

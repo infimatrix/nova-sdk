@@ -13,7 +13,7 @@ from nova_sdk._model_base import parse_model
 from nova_sdk.aio.resources.base import BaseResource
 from nova_sdk.exceptions import NovaValidationError
 from nova_sdk.models import PaginatedResponse, TemplateStatus
-from nova_sdk.schemas import Template, TemplateRender
+from nova_sdk.schemas import Template, TemplateRenderResult
 
 if TYPE_CHECKING:
     from nova_sdk.aio.client import AsyncNovaClient
@@ -251,7 +251,7 @@ class TemplatesResource(BaseResource):
         *,
         variables: Mapping[str, Any] | None = None,
         tenant_id: str | None = None,
-    ) -> TemplateRender:
+    ) -> TemplateRenderResult:
         """Render a template's subject and HTML content with variable substitution.
 
         Endpoint: POST /api/v1/templates/{id}/render/
@@ -275,7 +275,7 @@ class TemplatesResource(BaseResource):
             json=payload,
             tenant_id=tenant_id,
         )
-        return parse_model(TemplateRender, response.data or {})
+        return parse_model(TemplateRenderResult, response.data or {})
 
     async def activate(
         self,

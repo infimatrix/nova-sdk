@@ -54,6 +54,7 @@ __all__ = [
     "Template",
     "TemplatePlaceholder",
     "TemplateRender",
+    "TemplateRenderResult",
     "Tenant",
     "TenantCreate",
     "TenantMembershipSummary",
@@ -406,6 +407,7 @@ class Logout(NovaModel):
     """Logout response model."""
 
     refresh: str | None = None
+    message: str | None = None
 
 
 @dataclass(eq=False)
@@ -599,6 +601,14 @@ class TemplateRender(NovaModel):
 
 
 @dataclass(eq=False)
+class TemplateRenderResult(NovaModel):
+    """Rendered subject and HTML of a template."""
+
+    subject: str | None = None
+    html_content: str | None = None
+
+
+@dataclass(eq=False)
 class Tenant(NovaModel):
     """Tenant response model."""
 
@@ -764,6 +774,10 @@ class WebhookEndpointCreateUpdate(NovaModel):
     url: str | None = None
     events: list[str] | None = None
     is_active: bool | None = None
+    secret: str | None = None
+    secret_masked: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
 
 
 @dataclass(eq=False)

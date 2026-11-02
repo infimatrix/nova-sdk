@@ -11,10 +11,12 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * Logout model.
  *
  * @param refresh JSON property refresh.
+ * @param message JSON property message. Optional.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record Logout(
-    @JsonProperty("refresh") String refresh
+    @JsonProperty("refresh") String refresh,
+    @JsonProperty("message") String message
 ) {
 }

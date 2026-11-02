@@ -23,7 +23,7 @@ import re
 import sys
 from pathlib import Path
 
-import yaml
+from _overlay import load_spec
 
 ROOT = Path(__file__).resolve().parent.parent
 SPEC = ROOT / "openapi" / "nova-api.yaml"
@@ -216,7 +216,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    files = render_all(yaml.safe_load(SPEC.read_text()))
+    files = render_all(load_spec())
     existing = {p.name: p for p in OUT.glob("*.java")} if OUT.exists() else {}
     if args.check:
         stale = sorted({n for n in files if n not in existing or existing[n].read_text() != files[n]}

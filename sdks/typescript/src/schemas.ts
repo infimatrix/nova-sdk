@@ -364,6 +364,7 @@ export interface LoginRequest {
 
 export interface Logout {
   refresh: string;
+  message?: string;
 }
 
 export interface LogoutRequest {
@@ -721,6 +722,12 @@ export interface TemplateRenderRequest {
   variables?: Record<string, unknown>;
 }
 
+/** Rendered subject and HTML of a template. */
+export interface TemplateRenderResult {
+  subject?: string;
+  html_content?: string;
+}
+
 export interface TemplateRequest {
   name: string;
   subject?: string;
@@ -942,6 +949,11 @@ export interface WebhookEndpointCreateUpdate {
   url: string;
   events?: string[];
   is_active?: boolean;
+  /** Signing secret of the webhook endpoint, returned when it is created. */
+  secret?: string;
+  secret_masked?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface WebhookEndpointCreateUpdateRequest {
