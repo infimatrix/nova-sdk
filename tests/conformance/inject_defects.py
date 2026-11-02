@@ -39,6 +39,8 @@ class Defect:
     expect_in: tuple[str, ...]  # scenario id prefixes expected to fail (informational, at least one must)
     extra: tuple[tuple[str, str, str], ...] = ()  # further (file, old, new) edits applied together with the first
     equivalent: bool = False  # True: known to be masked by a second layer, so "undetected" is the correct answer
+    count: int = 1  # how many identical places the patch changes (the same code can exist in two classes)
+    only: str | None = None  # restrict the conformance run to scenarios whose id contains this text (speed)
 
 
 DEFECTS = [
@@ -103,6 +105,22 @@ DEFECTS = [
            "Retry-After 1000x too short", ("C-12c",)),
     Defect("JV-7", "java", "src/main/java/com/infimatrix/nova/http/HttpTransport.java", 'if (stripped.equals(".") || stripped.equals(".."))', "if (false)",
            "dot-segment guard removed", ("C-07a",)),
+
+    # ---- tenant lookup (C-23)
+    Defect("PY-9", "python", "src/nova_sdk/resources/tenants.py", 'found = current.get("id")', 'found = current.get("name")',
+           "tenant lookup reads the wrong field", ("C-23a",), only="C-23", count=2),
+    Defect("PY-10", "python", "src/nova_sdk/resources/tenants.py", "tid = self._explicit_tenant_id(tenant_id)\n        if tid is None:",
+           "tid = self._explicit_tenant_id(tenant_id) or self.current_tenant_id()\n        if tid is None:",
+           "tenant deletion infers the id from the credentials", ("C-23d",), only="C-23"),
+    Defect("TS-8", "typescript", "src/client.ts", "me.data?.current_tenant?.id", "(me.data?.current_tenant as { name?: string } | null | undefined)?.name",
+           "tenant lookup reads the wrong field", ("C-23a",), only="C-23"),
+    Defect("TS-9", "typescript", "src/resources/tenants.ts", "this.tenants.require(tenantId)", "(await this.tenants.resolve(tenantId, options))",
+           "tenant deletion infers the id from the credentials", ("C-23d",), only="C-23"),
+    Defect("JV-8", "java", "src/main/java/com/infimatrix/nova/resources/Validate.java", "NovaConfig.normalizeTenantId(current.id())", "NovaConfig.normalizeTenantId(current.name())",
+           "tenant lookup reads the wrong field", ("C-23a",), only="C-23"),
+    Defect("JV-9", "java", "src/main/java/com/infimatrix/nova/resources/TenantsApi.java", 'ApiRequest.of(HttpMethod.DELETE, "tenants/{}/", Validate.tenant(http, tenantId))',
+           'ApiRequest.of(HttpMethod.DELETE, "tenants/{}/", Validate.tenantOrLookup(http, tenantId))',
+           "tenant deletion infers the id from the credentials", ("C-23d",), only="C-23"),
 ]
 
 
@@ -134,8 +152,8 @@ def main() -> int:
             for rel, old, new in ((d.file, d.old, d.new), *d.extra):
                 target = work / rel
                 text = target.read_text(encoding="utf-8")
-                if text.count(old) != 1:
-                    bad = f"{rel}: expected exactly one match, found {text.count(old)}"
+                if text.count(old) != d.count:
+                    bad = f"{rel}: expected {d.count} match(es), found {text.count(old)}"
                     break
                 target.write_text(text.replace(old, new), encoding="utf-8")
             if bad:
@@ -154,7 +172,7 @@ def main() -> int:
                 subprocess.run(["mvn", "-q", "-B", "-ntp", "-DskipTests", "compile"], cwd=work, check=True, capture_output=True)
                 env["NOVA_CONF_JAVA_CLASSES"] = str(work / "target" / "classes")
                 env["NOVA_CONF_JAVA_PROJECT"] = str(work)
-            code, out = run_conformance(d.sdk, env, None)
+            code, out = run_conformance(d.sdk, env, d.only)
             failing = sorted({line.split()[1].split("#")[0] for line in out.splitlines() if line.startswith("FAIL ")})
             detected = code != 0 and bool(failing)
             expected_hit = any(f.startswith(e) for f in failing for e in d.expect_in)

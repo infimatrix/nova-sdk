@@ -60,6 +60,20 @@ def main():
                 data = {"ids": [t.id for t in page], "has_next": page.has_next}
             elif op == "templates.iter_all":
                 data = {"ids": [t.id for t in iter_items(nova.templates.list, page_size=call["page_size"])]}
+            elif op == "tenants.list_members":
+                page = nova.tenants.list_members()
+                data = {"ids": [m.id for m in page]}
+            elif op == "tenants.delete":
+                nova.tenants.delete()
+                data = None
+            elif op == "tenants.iter_all":
+                data = {"ids": [t.id for t in iter_items(nova.tenants.list, page_size=call["page_size"])]}
+            elif op == "templates.render":
+                r = nova.templates.render(call["id"], variables=call.get("variables"))
+                data = {"subject": r.subject, "html_content": r.html_content}
+            elif op == "webhooks.create":
+                w = nova.webhooks.create(name=call["name"], url=call["url"])
+                data = {"id": w.id, "secret": w.secret, "secret_masked": w.secret_masked}
             else:
                 raise SystemExit(f"unknown op {op}")
         print(json.dumps({"kind": "ok", "data": data}))

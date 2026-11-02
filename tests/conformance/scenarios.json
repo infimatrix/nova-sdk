@@ -2106,5 +2106,439 @@
     ]
    }
   ]
+ },
+ {
+  "id": "C-23a-tenant-found-from-the-key",
+  "doc": "README/getting-started: URL + API key is enough. With no tenant configured the SDK asks the server which tenant the credentials resolve to (GET auth/me/, the server's own rule) and uses it in the path",
+  "client": {
+   "api_key": "nova_key_abc"
+  },
+  "call": {
+   "op": "tenants.list_members"
+  },
+  "server": [
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "email": "a@b.co",
+      "current_tenant": {
+       "id": "11111111-1111-4111-8111-111111111111",
+       "name": "Acme"
+      }
+     },
+     "meta": {
+      "correlation_id": "cid-1"
+     }
+    }
+   },
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "success": true,
+      "pagination": {
+       "count": 2,
+       "next": null,
+       "previous": null,
+       "page": 1,
+       "total_pages": 1,
+       "page_size": 2
+      },
+      "results": [
+       {
+        "id": "m1",
+        "name": "M1"
+       },
+       {
+        "id": "m2",
+        "name": "M2"
+       }
+      ]
+     },
+     "meta": {
+      "correlation_id": "cid-p"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "requests": [
+    {
+     "method": "GET",
+     "path": "/api/v1/auth/me/",
+     "headers_absent": [
+      "x-tenant-id"
+     ]
+    },
+    {
+     "method": "GET",
+     "path": "/api/v1/tenants/11111111-1111-4111-8111-111111111111/members/"
+    }
+   ],
+   "outcome": {
+    "kind": "ok",
+    "data": {
+     "ids": [
+      "m1",
+      "m2"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "id": "C-23b-configured-tenant-needs-no-lookup",
+  "doc": "an explicitly configured tenant is used as is; no extra request",
+  "client": {
+   "api_key": "nova_key_abc",
+   "tenant_id": "11111111-1111-4111-8111-111111111111"
+  },
+  "call": {
+   "op": "tenants.list_members"
+  },
+  "server": [
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "success": true,
+      "pagination": {
+       "count": 2,
+       "next": null,
+       "previous": null,
+       "page": 1,
+       "total_pages": 1,
+       "page_size": 2
+      },
+      "results": [
+       {
+        "id": "m1",
+        "name": "M1"
+       },
+       {
+        "id": "m2",
+        "name": "M2"
+       }
+      ]
+     },
+     "meta": {
+      "correlation_id": "cid-p"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "requests": [
+    {
+     "method": "GET",
+     "path": "/api/v1/tenants/11111111-1111-4111-8111-111111111111/members/",
+     "headers_equal": {
+      "x-tenant-id": "11111111-1111-4111-8111-111111111111"
+     }
+    }
+   ],
+   "outcome": {
+    "kind": "ok",
+    "data": {
+     "ids": [
+      "m1",
+      "m2"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "id": "C-23c-no-tenant-reported",
+  "doc": "if the server reports no current tenant the SDK fails with a clear client error and does not guess",
+  "client": {
+   "api_key": "nova_key_abc"
+  },
+  "call": {
+   "op": "tenants.list_members"
+  },
+  "server": [
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "email": "a@b.co",
+      "current_tenant": null
+     },
+     "meta": {
+      "correlation_id": "cid-1"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "requests": [
+    {
+     "method": "GET",
+     "path": "/api/v1/auth/me/"
+    }
+   ],
+   "outcome": {
+    "kind": "error",
+    "category": "Validation",
+    "message_contains": [
+     "current tenant"
+    ]
+   }
+  },
+  "variants": [
+   {},
+   {
+    "server.0.json.data.current_tenant": {
+     "id": ""
+    }
+   }
+  ]
+ },
+ {
+  "id": "C-23d-tenant-delete-never-inferred",
+  "doc": "deleting a workspace by omission would be dangerous: the id must be passed or configured, and no lookup request is made",
+  "client": {
+   "api_key": "nova_key_abc"
+  },
+  "call": {
+   "op": "tenants.delete"
+  },
+  "server": [
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "email": "a@b.co",
+      "current_tenant": {
+       "id": "11111111-1111-4111-8111-111111111111",
+       "name": "Acme"
+      }
+     },
+     "meta": {
+      "correlation_id": "cid-1"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "requests": [],
+   "outcome": {
+    "kind": "error",
+    "category": "Validation"
+   }
+  }
+ },
+ {
+  "id": "C-23e-tenant-list-paging",
+  "doc": "conventions: every list method pages; the helpers walk tenants.list like any other",
+  "client": {
+   "api_key": "nova_key_abc"
+  },
+  "call": {
+   "op": "tenants.iter_all",
+   "page_size": 2
+  },
+  "server": [
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "success": true,
+      "pagination": {
+       "count": 2,
+       "next": "http://x/?page=2",
+       "previous": null,
+       "page": 1,
+       "total_pages": 2,
+       "page_size": 2
+      },
+      "results": [
+       {
+        "id": "a",
+        "name": "A"
+       },
+       {
+        "id": "b",
+        "name": "B"
+       }
+      ]
+     },
+     "meta": {
+      "correlation_id": "cid-p"
+     }
+    }
+   },
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "success": true,
+      "pagination": {
+       "count": 1,
+       "next": null,
+       "previous": null,
+       "page": 2,
+       "total_pages": 2,
+       "page_size": 2
+      },
+      "results": [
+       {
+        "id": "c",
+        "name": "C"
+       }
+      ]
+     },
+     "meta": {
+      "correlation_id": "cid-p"
+     }
+    },
+    "when_query": {
+     "page": "2"
+    }
+   }
+  ],
+  "expect": {
+   "requests": [
+    {
+     "path": "/api/v1/tenants/",
+     "query_has": {
+      "page_size": "2"
+     }
+    },
+    {
+     "path": "/api/v1/tenants/",
+     "query_has": {
+      "page": "2",
+      "page_size": "2"
+     }
+    }
+   ],
+   "outcome": {
+    "kind": "ok",
+    "data": {
+     "ids": [
+      "a",
+      "b",
+      "c"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "id": "C-24a-render-result-has-typed-fields",
+  "doc": "live server (docs/verification-report.md section 12): template render returns subject and html_content; typed clients must expose them",
+  "client": {
+   "api_key": "nova_key_abc",
+   "tenant_id": "11111111-1111-4111-8111-111111111111"
+  },
+  "call": {
+   "op": "templates.render",
+   "id": "t-1",
+   "variables": {
+    "name": "Ada"
+   }
+  },
+  "server": [
+   {
+    "status": 200,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "subject": "Hi Ada",
+      "html_content": "<p>Hi Ada</p>"
+     },
+     "meta": {
+      "correlation_id": "cid-1"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v1/templates/t-1/render/",
+     "body_json_subset": {
+      "variables": {
+       "name": "Ada"
+      }
+     }
+    }
+   ],
+   "outcome": {
+    "kind": "ok",
+    "data": {
+     "subject": "Hi Ada",
+     "html_content": "<p>Hi Ada</p>"
+    }
+   }
+  }
+ },
+ {
+  "id": "C-24b-webhook-secret-is-readable",
+  "doc": "live server: webhook creation returns the signing secret once; typed clients must expose it",
+  "client": {
+   "api_key": "nova_key_abc",
+   "tenant_id": "11111111-1111-4111-8111-111111111111"
+  },
+  "call": {
+   "op": "webhooks.create",
+   "name": "w",
+   "url": "https://x.test/h"
+  },
+  "server": [
+   {
+    "status": 201,
+    "json": {
+     "success": true,
+     "message": "ok",
+     "data": {
+      "id": "w-1",
+      "name": "w",
+      "url": "https://x.test/h",
+      "secret": "whsec_abc",
+      "secret_masked": "whsec_***",
+      "created_at": "2026-11-02T00:00:00Z"
+     },
+     "meta": {
+      "correlation_id": "cid-1"
+     }
+    }
+   }
+  ],
+  "expect": {
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v1/webhooks/"
+    }
+   ],
+   "outcome": {
+    "kind": "ok",
+    "data": {
+     "id": "w-1",
+     "secret": "whsec_abc",
+     "secret_masked": "whsec_***"
+    }
+   }
+  }
  }
 ]
