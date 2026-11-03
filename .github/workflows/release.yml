@@ -131,13 +131,14 @@ jobs:
         env:
           AR_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
         run: |
+          # User-level npmrc outside the checkout: a project .npmrc here would leak into the publish-guard test
+          # that prepublishOnly runs and make it see the real registry.
           registry="${AR_LOCATION}-npm.pkg.dev/${AR_PROJECT}/${AR_REPOSITORY}/"
           {
             echo "@infimatrix:registry=https://${registry}"
             echo "//${registry}:_authToken=\${AR_ACCESS_TOKEN}"
-          } > .npmrc
-          npm publish
-          rm -f .npmrc
+          } > "$RUNNER_TEMP/npmrc"
+          NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/npmrc" npm publish
 
   java:
     name: Publish Java
