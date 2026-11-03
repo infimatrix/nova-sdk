@@ -1,4 +1,4 @@
-"""Static checks that CI never publishes: one workflow, no secrets, no cloud auth, no release steps."""
+"""Static checks that CI never publishes; only the tag-triggered release workflow may authenticate and publish."""
 
 from __future__ import annotations
 
@@ -20,9 +20,9 @@ PUBLISH_COMMANDS = [
 ]
 
 
-def test_there_is_exactly_one_workflow_with_secret_scan_codeql_and_tests():
+def test_there_are_exactly_the_ci_and_release_workflows():
     files = sorted(p.name for p in WORKFLOWS.iterdir())
-    assert files == ["ci.yml"]
+    assert files == ["ci.yml", "release.yml"]
     jobs = yaml.safe_load((WORKFLOWS / "ci.yml").read_text())["jobs"]
     assert {"gitleaks", "codeql", "contract", "python", "typescript", "java"} == set(
         jobs
@@ -40,6 +40,18 @@ def test_ci_has_no_publish_cloud_auth_secrets_or_environments():
     assert data["permissions"] == {"contents": "read"}
     for name, job in data["jobs"].items():
         assert "environment" not in job, name
+
+
+def test_release_workflow_is_manual_only_and_uses_an_approval_environment():
+    data = yaml.safe_load((WORKFLOWS / "release.yml").read_text())
+    triggers = data.get("on", data.get(True))
+    assert set(triggers) == {"workflow_dispatch"}
+    assert data["permissions"] == {"contents": "read"}
+    assert "secrets." not in (WORKFLOWS / "release.yml").read_text()
+    assert set(data["jobs"]) == {"python", "typescript", "java"}
+    for name, job in data["jobs"].items():
+        assert job["environment"] == "release", name
+        assert job["permissions"] == {"contents": "read", "id-token": "write"}, name
 
 
 def test_package_metadata_points_to_the_sdk_repository_and_blocks_public_upload():
