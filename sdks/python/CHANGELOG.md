@@ -4,7 +4,13 @@ All notable changes to the Nova Python SDK are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
-## [0.2.0] - Unreleased
+## [0.2.1] - 2026-11-03
+
+### Changed
+- Version bump only. 0.2.0 reached Artifact Registry for Python and Java but not TypeScript (release workflow fix), so all
+  three SDKs are released together as 0.2.1. No code changes since 0.2.0.
+
+## [0.2.0] - 2026-11-03
 
 ### Added
 - `tenants.current_tenant_id()` returns the tenant the credentials resolve to (client default, otherwise `GET /auth/me/`).

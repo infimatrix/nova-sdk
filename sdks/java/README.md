@@ -22,7 +22,7 @@ mvn install                # installs into your local ~/.m2 only (not a publish)
 <dependency>
   <groupId>com.infimatrix</groupId>
   <artifactId>nova-sdk</artifactId>
-  <version>0.2.0</version>
+  <version>0.2.1</version>
 </dependency>
 ```
 
