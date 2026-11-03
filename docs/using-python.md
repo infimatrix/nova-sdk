@@ -27,7 +27,7 @@ index-url = https://<LOCATION>-python.pkg.dev/<PROJECT>/<REPOSITORY>/simple/
 ```
 
 `requirements.txt` pinned to the repository: first line `--index-url https://<LOCATION>-python.pkg.dev/<PROJECT>/<REPOSITORY>/simple/`,
-then `infimatrix-nova-sdk==0.2.0`. Use a remote/virtual AR repository in front of PyPI for your other dependencies rather
+then `infimatrix-nova-sdk==0.2.1`. Use a remote/virtual AR repository in front of PyPI for your other dependencies rather
 than `--extra-index-url` (dependency confusion risk).
 
 **CI** (no keyring): `pip install --index-url "https://oauth2accesstoken:$(gcloud auth print-access-token)@<LOCATION>-python.pkg.dev/<PROJECT>/<REPOSITORY>/simple/" infimatrix-nova-sdk`

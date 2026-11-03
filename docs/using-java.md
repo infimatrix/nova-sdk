@@ -42,7 +42,7 @@ Alternatively use the `artifactregistry-maven-wagon` extension (credentials from
   <dependency>
     <groupId>com.infimatrix</groupId>
     <artifactId>nova-sdk</artifactId>
-    <version>0.2.0</version>
+    <version>0.2.1</version>
   </dependency>
 </dependencies>
 ```
@@ -60,7 +60,7 @@ repositories {
         }
     }
 }
-dependencies { implementation("com.infimatrix:nova-sdk:0.2.0") }
+dependencies { implementation("com.infimatrix:nova-sdk:0.2.1") }
 ```
 
 ## 4. Local install (no registry)
