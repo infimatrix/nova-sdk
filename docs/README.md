@@ -20,6 +20,7 @@ scripts/sync_openapi.py ──▶ openapi/nova-api.yaml  (committed snapshot, th
 
 ## Guides
 
+- [Developer setup guide (install from Artifact Registry, first request)](developer-setup-guide.md)
 - [Getting started](getting-started.md)
 - [Authentication and tenancy](authentication.md)
 - [Error handling](error-handling.md)
