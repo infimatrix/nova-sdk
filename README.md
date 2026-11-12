@@ -37,6 +37,7 @@ are configured by this repository.
 
 | I want to… | Read |
 |---|---|
+| Set up and start using an SDK (step by step) | [docs/developer-setup-guide.md](docs/developer-setup-guide.md) |
 | Publish the SDKs to Artifact Registry | [docs/deploy-artifact-registry.md](docs/deploy-artifact-registry.md) |
 | Install and use the Python SDK | [docs/using-python.md](docs/using-python.md) |
 | Install and use the Node.js SDK | [docs/using-node.md](docs/using-node.md) |
