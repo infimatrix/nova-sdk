@@ -38,7 +38,7 @@
     <maven.compiler.release>17</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.build.outputTimestamp>2026-01-01T00:00:00Z</project.build.outputTimestamp>
-    <jackson.version>2.22.4</jackson.version>
+    <jackson.version>2.23.0</jackson.version>
     <junit.version>5.14.4</junit.version>
     <jqwik.version>1.10.2</jqwik.version>
     <jacoco.minimum.line>0.85</jacoco.minimum.line>
